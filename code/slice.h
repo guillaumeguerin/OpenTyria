@@ -1,16 +1,16 @@
 #pragma once
 
 typedef struct slice_void_t {
-    size_t       len;
     const void  *ptr;
+    size_t       len;
 } slice_void_t;
 
 #define slice(T)           \
 union {                    \
     slice_void_t base;     \
     struct {               \
-        size_t   len;      \
         const T *ptr;      \
+        size_t   len;      \
     };                     \
 }
 

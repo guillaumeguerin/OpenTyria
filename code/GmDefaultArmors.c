@@ -560,12 +560,12 @@ GmItem g_DefElementalistPropheciesPveEquipments[] = {
 };
 
 GmItemSlice g_DefaultPropheciesPveEquipments[] = {
-    [Profession_Warrior] = { ARRAY_SIZE(g_DefWarriorPropheciesPveEquipments), g_DefWarriorPropheciesPveEquipments },
-    [Profession_Ranger] = { ARRAY_SIZE(g_DefRangerPropheciesPveEquipments), g_DefRangerPropheciesPveEquipments },
-    [Profession_Monk] = { ARRAY_SIZE(g_DefMonkPropheciesPveEquipments), g_DefMonkPropheciesPveEquipments },
-    [Profession_Necromancer] = { ARRAY_SIZE(g_DefNecromancerPropheciesPveEquipments), g_DefNecromancerPropheciesPveEquipments },
-    [Profession_Mesmer] = { ARRAY_SIZE(g_DefMesmerPropheciesPveEquipments), g_DefMesmerPropheciesPveEquipments },
-    [Profession_Elementalist] = { ARRAY_SIZE(g_DefElementalistPropheciesPveEquipments), g_DefElementalistPropheciesPveEquipments },
+    [Profession_Warrior] = { g_DefWarriorPropheciesPveEquipments, ARRAY_SIZE(g_DefWarriorPropheciesPveEquipments) },
+    [Profession_Ranger] = { g_DefRangerPropheciesPveEquipments, ARRAY_SIZE(g_DefRangerPropheciesPveEquipments) },
+    [Profession_Monk] = { g_DefMonkPropheciesPveEquipments, ARRAY_SIZE(g_DefMonkPropheciesPveEquipments) },
+    [Profession_Necromancer] = { g_DefNecromancerPropheciesPveEquipments, ARRAY_SIZE(g_DefNecromancerPropheciesPveEquipments) },
+    [Profession_Mesmer] = { g_DefMesmerPropheciesPveEquipments, ARRAY_SIZE(g_DefMesmerPropheciesPveEquipments) },
+    [Profession_Elementalist] = { g_DefElementalistPropheciesPveEquipments, ARRAY_SIZE(g_DefElementalistPropheciesPveEquipments) },
 };
 
 GmItem g_DefWarriorFactionsPveEquipments[] = {
@@ -1193,14 +1193,14 @@ GmItem g_DefRitualistFactionsPveEquipments[] = {
 };
 
 GmItemSlice g_DefaultFactionsPveEquipments[] = {
-    [Profession_Warrior] = { ARRAY_SIZE(g_DefWarriorFactionsPveEquipments), g_DefWarriorFactionsPveEquipments },
-    [Profession_Ranger] = { ARRAY_SIZE(g_DefRangerFactionsPveEquipments), g_DefRangerFactionsPveEquipments },
-    [Profession_Monk] = { ARRAY_SIZE(g_DefMonkFactionsPveEquipments), g_DefMonkFactionsPveEquipments },
-    [Profession_Necromancer] = { ARRAY_SIZE(g_DefNecromancerFactionsPveEquipments), g_DefNecromancerFactionsPveEquipments },
-    [Profession_Mesmer] = { ARRAY_SIZE(g_DefMesmerFactionsPveEquipments), g_DefMesmerFactionsPveEquipments },
-    [Profession_Elementalist] = { ARRAY_SIZE(g_DefElementalistFactionsPveEquipments), g_DefElementalistFactionsPveEquipments },
-    [Profession_Assassin] = { ARRAY_SIZE(g_DefAssassinFactionsPveEquipments), g_DefAssassinFactionsPveEquipments },
-    [Profession_Ritualist] = { ARRAY_SIZE(g_DefRitualistFactionsPveEquipments), g_DefRitualistFactionsPveEquipments },
+    [Profession_Warrior] = { g_DefWarriorFactionsPveEquipments, ARRAY_SIZE(g_DefWarriorFactionsPveEquipments) },
+    [Profession_Ranger] = { g_DefRangerFactionsPveEquipments, ARRAY_SIZE(g_DefRangerFactionsPveEquipments) },
+    [Profession_Monk] = { g_DefMonkFactionsPveEquipments, ARRAY_SIZE(g_DefMonkFactionsPveEquipments) },
+    [Profession_Necromancer] = { g_DefNecromancerFactionsPveEquipments, ARRAY_SIZE(g_DefNecromancerFactionsPveEquipments) },
+    [Profession_Mesmer] = { g_DefMesmerFactionsPveEquipments, ARRAY_SIZE(g_DefMesmerFactionsPveEquipments) },
+    [Profession_Elementalist] = { g_DefElementalistFactionsPveEquipments, ARRAY_SIZE(g_DefElementalistFactionsPveEquipments) },
+    [Profession_Assassin] = { g_DefAssassinFactionsPveEquipments, ARRAY_SIZE(g_DefAssassinFactionsPveEquipments) },
+    [Profession_Ritualist] = { g_DefRitualistFactionsPveEquipments, ARRAY_SIZE(g_DefRitualistFactionsPveEquipments) },
 };
 
 GmItem g_DefWarriorNightfallPveEquipments[] = {
@@ -1828,14 +1828,14 @@ GmItem g_DefDervishNightfallPveEquipments[] = {
 };
 
 GmItemSlice g_DefaultNightfallPveEquipments[] = {
-    [Profession_Warrior] = { ARRAY_SIZE(g_DefWarriorNightfallPveEquipments), g_DefWarriorNightfallPveEquipments },
-    [Profession_Ranger] = { ARRAY_SIZE(g_DefRangerNightfallPveEquipments), g_DefRangerNightfallPveEquipments },
-    [Profession_Monk] = { ARRAY_SIZE(g_DefMonkNightfallPveEquipments), g_DefMonkNightfallPveEquipments },
-    [Profession_Necromancer] = { ARRAY_SIZE(g_DefNecromancerNightfallPveEquipments), g_DefNecromancerNightfallPveEquipments },
-    [Profession_Mesmer] = { ARRAY_SIZE(g_DefMesmerNightfallPveEquipments), g_DefMesmerNightfallPveEquipments },
-    [Profession_Elementalist] = { ARRAY_SIZE(g_DefElementalistNightfallPveEquipments), g_DefElementalistNightfallPveEquipments },
-    [Profession_Paragon] = { ARRAY_SIZE(g_DefParagonNightfallPveEquipments), g_DefParagonNightfallPveEquipments },
-    [Profession_Dervish] = { ARRAY_SIZE(g_DefDervishNightfallPveEquipments), g_DefDervishNightfallPveEquipments },
+    [Profession_Warrior] = { g_DefWarriorNightfallPveEquipments, ARRAY_SIZE(g_DefWarriorNightfallPveEquipments) },
+    [Profession_Ranger] = { g_DefRangerNightfallPveEquipments, ARRAY_SIZE(g_DefRangerNightfallPveEquipments) },
+    [Profession_Monk] = { g_DefMonkNightfallPveEquipments, ARRAY_SIZE(g_DefMonkNightfallPveEquipments) },
+    [Profession_Necromancer] = { g_DefNecromancerNightfallPveEquipments, ARRAY_SIZE(g_DefNecromancerNightfallPveEquipments) },
+    [Profession_Mesmer] = { g_DefMesmerNightfallPveEquipments, ARRAY_SIZE(g_DefMesmerNightfallPveEquipments) },
+    [Profession_Elementalist] = { g_DefElementalistNightfallPveEquipments, ARRAY_SIZE(g_DefElementalistNightfallPveEquipments) },
+    [Profession_Paragon] = { g_DefParagonNightfallPveEquipments, ARRAY_SIZE(g_DefParagonNightfallPveEquipments) },
+    [Profession_Dervish] = { g_DefDervishNightfallPveEquipments, ARRAY_SIZE(g_DefDervishNightfallPveEquipments) },
 };
 
 GmItem g_DefWarriorPvpEquipments[] = {
@@ -2814,16 +2814,16 @@ GmItem g_DefDervishPvpEquipments[] = {
 };
 
 GmItemSlice g_DefaultPvpEquipments[] = {
-    [Profession_Warrior] = { ARRAY_SIZE(g_DefWarriorPvpEquipments), g_DefWarriorPvpEquipments },
-    [Profession_Ranger] = { ARRAY_SIZE(g_DefRangerPvpEquipments), g_DefRangerPvpEquipments },
-    [Profession_Monk] = { ARRAY_SIZE(g_DefMonkPvpEquipments), g_DefMonkPvpEquipments },
-    [Profession_Necromancer] = { ARRAY_SIZE(g_DefNecromancerPvpEquipments), g_DefNecromancerPvpEquipments },
-    [Profession_Mesmer] = { ARRAY_SIZE(g_DefMesmerPvpEquipments), g_DefMesmerPvpEquipments },
-    [Profession_Elementalist] = { ARRAY_SIZE(g_DefElementalistPvpEquipments), g_DefElementalistPvpEquipments },
-    [Profession_Assassin] = { ARRAY_SIZE(g_DefAssassinPvpEquipments), g_DefAssassinPvpEquipments },
-    [Profession_Ritualist] = { ARRAY_SIZE(g_DefRitualistPvpEquipments), g_DefRitualistPvpEquipments },
-    [Profession_Paragon] = { ARRAY_SIZE(g_DefParagonPvpEquipments), g_DefParagonPvpEquipments },
-    [Profession_Dervish] = { ARRAY_SIZE(g_DefDervishPvpEquipments), g_DefDervishPvpEquipments },
+    [Profession_Warrior] = { g_DefWarriorPvpEquipments, ARRAY_SIZE(g_DefWarriorPvpEquipments) },
+    [Profession_Ranger] = { g_DefRangerPvpEquipments, ARRAY_SIZE(g_DefRangerPvpEquipments) },
+    [Profession_Monk] = { g_DefMonkPvpEquipments, ARRAY_SIZE(g_DefMonkPvpEquipments) },
+    [Profession_Necromancer] = { g_DefNecromancerPvpEquipments, ARRAY_SIZE(g_DefNecromancerPvpEquipments) },
+    [Profession_Mesmer] = { g_DefMesmerPvpEquipments, ARRAY_SIZE(g_DefMesmerPvpEquipments) },
+    [Profession_Elementalist] = { g_DefElementalistPvpEquipments, ARRAY_SIZE(g_DefElementalistPvpEquipments) },
+    [Profession_Assassin] = { g_DefAssassinPvpEquipments, ARRAY_SIZE(g_DefAssassinPvpEquipments) },
+    [Profession_Ritualist] = { g_DefRitualistPvpEquipments, ARRAY_SIZE(g_DefRitualistPvpEquipments) },
+    [Profession_Paragon] = { g_DefParagonPvpEquipments, ARRAY_SIZE(g_DefParagonPvpEquipments) },
+    [Profession_Dervish] = { g_DefDervishPvpEquipments, ARRAY_SIZE(g_DefDervishPvpEquipments) },
 };
 
 GmItem g_Backpack = {
