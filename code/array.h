@@ -44,7 +44,7 @@ typedef array(uintptr_t) array_uintptr_t;
 #define array_add(a, e)         ((array_reserve(a, 1) == 0) && (((a)->ptr[(a)->len++] = (e)), 1), (a)->tmp)
 #define array_set(a, i, e)      (array_inside(a, i) && (((a)->ptr[(i)] = (e)), 1))
 #define array_pop(a)            ((a)->ptr[(a)->len ? --(a)->len : 0])
-#define array_at(a, i)          ((a)->ptr[(i)])
+#define array_at(a, i)          ((a)->ptr[_array_at_chk(&(a)->base, (i), __FILE__, __LINE__)])
 
 #define array_front(a)          ((a)->ptr[0])
 #define array_back(a)           ((a)->ptr[(a)->len - 1])
@@ -89,3 +89,4 @@ int   _array_copy(array_void_t *dest, array_void_t *src, const size_t elem_size)
 int   _array_push(array_void_t *a, size_t n, const size_t elem_size);
 void  _array_remove_ordered(array_void_t *a, size_t index, const size_t elem_size);
 void  _array_remove_range_ordered(array_void_t *a, size_t index, size_t count, const size_t elem_size);
+size_t _array_at_chk(array_void_t *a, size_t index, const char *file, int line);

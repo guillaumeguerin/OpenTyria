@@ -30,16 +30,16 @@ void _slice_advance(slice_void_t *slice, size_t count, size_t elem_size)
 }
 
 typedef struct slice_mut_void_t {
-    size_t len;
     void  *ptr;
+    size_t len;
 } slice_mut_void_t;
 
 #define slice_mut(T)       \
 union {                    \
     slice_mut_void_t base; \
     struct {               \
-        size_t  len;       \
         T      *ptr;       \
+        size_t  len;       \
     };                     \
 }
 

@@ -13,8 +13,13 @@ typedef struct Vec3f {
 } Vec3f;
 
 typedef struct GmPos {
-    float    x;
-    float    y;
+    union {
+        struct {
+            float x;
+            float y;
+        };
+        Vec2f v2;
+    };
     uint16_t plane;
 } GmPos;
 typedef slice(GmPos) GmPosSlice;

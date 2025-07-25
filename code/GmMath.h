@@ -1,5 +1,10 @@
 #pragma once
 
+float fclampf(float val, float min, float max)
+{
+    return fmaxf(fminf(val, max), min);
+}
+
 float Vec2f_Dist2(Vec2f left, Vec2f right)
 {
     float dx = right.x - left.x;

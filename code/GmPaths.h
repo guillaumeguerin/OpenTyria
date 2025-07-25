@@ -5,7 +5,7 @@ typedef struct PathTrapezoid PathTrapezoid;
 struct PathTrapezoid {
     uint32_t       trap_id;
     PathTrapezoid *top_left;
-    PathTrapezoid *top_rigth;
+    PathTrapezoid *top_right;
     PathTrapezoid *bottom_left;
     PathTrapezoid *bottom_right;
     uint16_t       portal_left;
@@ -18,6 +18,7 @@ struct PathTrapezoid {
     float          xbr;
 };
 typedef array(PathTrapezoid) PathTrapezoidArray;
+typedef array(PathTrapezoid*) PathTrapezoidPtrArray;
 
 typedef enum NodeType {
     NodeType_XNode = 0,
@@ -58,28 +59,35 @@ typedef struct Node {
 } Node;
 typedef array(Node) ArrayNode;
 
-typedef struct Portal {
-    uint32_t id;
-} Portal;
+typedef struct Portal Portal;
+struct Portal {
+    uint16_t portal_plane_id;
+    uint16_t neighbor_plane_id;
+    uint8_t  flags;
+    Portal  *pair;
+    uint32_t traps_count;
+    PathTrapezoid **traps;
+};
 typedef array(Portal) ArrayPortal;
 
 typedef struct PathPlane {
-    uint32_t           plane_id;
-    Vec2fArray         vectors;
-    PathTrapezoidArray trapezoids;
-    uint32_t           next_trap_idx;
-    ArrayNode          sink_nodes;
-    ArrayNode          xnodes;
-    ArrayNode          ynodes;
-    ArrayPortal        portals;
-    uint32_t           h000C;
-    uint32_t           h0034;
-    Node              *root_node;
+    uint32_t              plane_id;
+    Vec2fArray            vectors;
+    PathTrapezoidArray    trapezoids;
+    uint32_t              next_trap_idx;
+    ArrayNode             sink_nodes;
+    ArrayNode             xnodes;
+    ArrayNode             ynodes;
+    ArrayPortal           portals;
+    uint32_t              h000C;
+    PathTrapezoidPtrArray portals_traps;
+    Node                 *root_node;
 } PathPlane;
 typedef array(PathPlane) ArrayPathPlane;
 
 typedef struct PathStaticData {
     ArrayPathPlane planes;
+    uint32_t       traps_count;
 } PathStaticData;
 
 typedef struct PathNode PathNode;
@@ -87,7 +95,7 @@ struct PathNode {
     bool      closed;
     float     cost_to_node;
     GmPos     pos;
-    PathTrapezoid *trap_id;
+    PathTrapezoid *trap;
     PathNode *parent;
 };
 typedef array(PathNode) PathNodeArray;
@@ -95,6 +103,7 @@ typedef array(PathNode) PathNodeArray;
 typedef struct PathContext {
     PathStaticData static_data;
     PathNodeArray  nodes;
+    PathHeapArray  prioq;
 } PathContext;
 
 typedef struct Waypoint {
@@ -103,12 +112,7 @@ typedef struct Waypoint {
 } Waypoint;
 typedef array(Waypoint) WaypointArray;
 
-typedef struct PrioQElem {
-    float    cost;
-    uint32_t trap_id;
-} PrioQElem;
-
 PathTrapezoid* FindTrapezoid(PathContext *context, GmPos pos);
 PathTrapezoid* SearchTrapezoid(PathContext *context, Vec2f pos);
 
-void PathFinding(PathContext *context, GmPos srcPos, GmPos dstPos, WaypointArray *waypoints);
+bool PathFinding(PathContext *context, GmPos src_pos, GmPos dst_pos, WaypointArray *waypoints);
