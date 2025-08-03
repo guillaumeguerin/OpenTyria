@@ -64,9 +64,17 @@ def main(args):
         print("Couldn't find the jmp to patch to avoid overriding GwLoginClient.dll in text section");
         sys.exit(1)
 
-    jmp_rva = found + text_section.VirtualAddress + 0x103
+    jmp_rva = found + text_section.VirtualAddress + 0x9D
     print('[+] jmp_rva is:', hex(jmp_rva))
     jmp_file_pos = gw_pe.get_offset_from_rva(jmp_rva)
+
+    jmp_target_found = text_sec_data[found:].find(b'\x83\xC4\x0C\x85\xC9\x74\x05\xE8')
+    if jmp_target_found < 0:
+        print("Couldn't find the jmp target to avoid overriding GwLoginClient.dll in text section");
+        sys.exit(1)
+
+    jmp_target_rva = found + jmp_target_found + text_section.VirtualAddress - 0x19
+    print('[+] jmp_target_rva is:', hex(jmp_target_rva))
 
     print('[+] Searching for mutex patch')
     found = text_sec_data.find(b'\x8B\xF8\x85\xFF\x74\x11\xFF\xD6\x3D\xB7')
@@ -107,9 +115,10 @@ def main(args):
     data_mut = patch(data_mut, key_file_pos, prim_root.to_bytes(4, byteorder='little'))
     data_mut = patch(data_mut, key_file_pos + 4, prime_mod.to_bytes(64, byteorder='little'))
     data_mut = patch(data_mut, key_file_pos + 68, public_key.to_bytes(64, byteorder='little'))
-    data_mut = patch(data_mut, jmp_file_pos, b'\x31')
     data_mut = patch(data_mut, mutex_patch_file_pos, b'\x31\xC0\x90\x90\x90\x0F\x84')
     data_mut = patch(data_mut, mutex_name_file_pos, b'AN-Futex')
+    jmp_offset = (jmp_target_rva - jmp_rva) - 5
+    data_mut = patch(data_mut, jmp_file_pos, struct.pack('<BIBBB', 0xE9, jmp_offset, 0x90, 0x90, 0x90))
 
     data = bytes(data_mut)
     with open(out_path, 'wb') as f:
