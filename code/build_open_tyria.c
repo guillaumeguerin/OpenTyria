@@ -115,9 +115,11 @@
 #include "GmItem.h"
 #include "GmParty.h"
 #include "GmText.h"
-
 #include "GmTitleConstData.h"
 #include "GmDefaultArmors.h"
+
+#include "FaArchive.h"
+#include "FaCompress.h"
 
 #include "Db.h"
 
@@ -136,6 +138,8 @@
 #include "array.c"
 #include "AuthSrv.c"
 #include "Db.c"
+#include "FaArchive.c"
+#include "FaCompress.c"
 #include "GameSrv.c"
 #include "GmAgent.c"
 #include "GmChar.c"

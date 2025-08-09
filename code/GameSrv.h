@@ -65,6 +65,7 @@ typedef struct GameSrv {
     uint32_t                 district_number;
     Iocp                     iocp;
     Database                 database;
+    FileArchive              archive;
     bool                     quit_signaled;
     GameConnMap             *connections;
     array_uintptr_t          connections_with_event;

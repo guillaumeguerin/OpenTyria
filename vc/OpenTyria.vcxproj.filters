@@ -32,6 +32,8 @@
     <ClCompile Include="..\code\GmText.c" />
     <ClCompile Include="..\code\GmPathHeap.c" />
     <ClCompile Include="..\code\GmPaths.c" />
+    <ClCompile Include="..\code\FaArchive.c" />
+    <ClCompile Include="..\code\FaCompress.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\code\array.h" />
@@ -83,6 +85,8 @@
     <ClInclude Include="..\code\GmText.h" />
     <ClInclude Include="..\code\GmPaths.h" />
     <ClInclude Include="..\code\GmPathHeap.h" />
+    <ClInclude Include="..\code\FaArchive.h" />
+    <ClInclude Include="..\code\FaCompress.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\code\msgdefs.info" />

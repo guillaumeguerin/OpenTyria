@@ -56,6 +56,11 @@ int GameSrv_Setup(GameSrv *srv)
         return err;
     }
 
+    path = "Gw.dat";
+    if ((err = FaOpen(&srv->archive, path)) != 0) {
+        return err;
+    }
+
     srv->creation_instance_time = sys_get_monotonic_time_ms();
     return ERR_OK;
 }
@@ -78,6 +83,7 @@ void GameSrv_Free(GameSrv *srv)
     array_free(&srv->free_agents_slots);
     array_free(&srv->text_builder);
     Db_Close(&srv->database);
+    FaClose(&srv->archive);
 }
 
 GameConnection* GameSrv_GetConnection(GameSrv *srv, uintptr_t token)
