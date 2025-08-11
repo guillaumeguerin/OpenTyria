@@ -136,8 +136,8 @@ GameSrvMsg* GameSrv_BuildCreateAgentMsg(GameSrv *srv, GmAgent *agent, size_t *si
     msg->model_id = agent->model_id;
     msg->agent_type = agent->agent_type;
     msg->h000B = 5;
-    msg->position = agent->position;
-    msg->plane = agent->plane;
+    msg->position = agent->position.v2;
+    msg->plane = agent->position.plane;
     msg->direction = agent->direction;
     msg->h001E = 1;
     msg->speed_base = agent->speed_base;
@@ -246,8 +246,8 @@ void GameSrv_BroadcastAgentPosition(GameSrv *srv, GmAgent *agent)
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_AGENT_UPDATE_POSITION);
     GameSrv_UpdateAgentPostion *msg = &buffer->update_agent_position;
     msg->agent_id = agent->agent_id;
-    msg->position = agent->position;
-    msg->plane = agent->plane;
+    msg->position = agent->position.v2;
+    msg->plane = agent->position.plane;
 
     GameSrv_BroadcastMessage(srv, buffer, sizeof(*msg));
 }
@@ -395,8 +395,8 @@ int GameSrv_HandleMoveToCoord(GameSrv *srv, uint16_t player_id, GameSrv_MoveToCo
         return ERR_SERVER_ERROR;
     }
 
-    agent->destination.x = msg->pos.x;
-    agent->destination.y = msg->pos.y;
+    agent->destination.v2 = msg->pos;
+    agent->destination.plane = msg->plane;
     agent->speed = agent->speed_base;
 
     float dx = agent->destination.x - agent->position.x;
@@ -436,13 +436,13 @@ int GameSrv_HandleLastPosOnMoveCanceled(GameSrv *srv, uint16_t player_id, GameSr
         return ERR_SERVER_ERROR;
     }
 
-    if (MAXIMUM_ALLOWED_CORRECTION < Vec2f_Dist2(agent->position, msg->pos)) {
+    if (msg->plane != agent->position.plane || MAXIMUM_ALLOWED_CORRECTION < Vec2f_Dist2(agent->position.v2, msg->pos)) {
         log_warn("Player %u tried to correct the position by more than allowed", player_id);
         return ERR_OK;
     }
 
     agent->position.x = msg->pos.x;
     agent->position.y = msg->pos.y;
-    agent->plane = (uint16_t) msg->plane;
+    agent->position.plane = (uint16_t) msg->plane;
     return ERR_OK;
 }

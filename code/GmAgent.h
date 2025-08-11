@@ -13,10 +13,9 @@ typedef enum AgentType {
 
 typedef struct GmAgent {
     uint32_t  agent_id;
-    Vec2f     position;
-    uint16_t  plane;
+    GmPos     position;
     Vec2f     direction;
-    Vec2f     destination;
+    GmPos     destination;
     float     rotation;
     uint32_t  model_id;
     uint32_t  load_time;

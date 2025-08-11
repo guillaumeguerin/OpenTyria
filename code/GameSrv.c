@@ -953,7 +953,7 @@ GmPos GameSrv_PickSpawn(GameSrv *srv)
 void GameSrv_CreatePlayerAgent(GameSrv *srv, GmPlayer *player)
 {
     GmAgent *agent = GameSrv_CreateAgent(srv);
-    agent->position    = GameSrv_PickSpawn(srv).v2;
+    agent->position    = GameSrv_PickSpawn(srv);
     agent->direction.x = 1.f;
     agent->direction.y = 0.f;
     agent->model_id = CHAR_CLASS_PLAYER_BASE | player->player_id;
@@ -1264,7 +1264,7 @@ int GameSrv_HandleInstanceLoadRequestSpawn(GameSrv *srv, size_t player_id)
     msg->map_file_id = 0x345CC; // Kaineng 0x265F7
     msg->position.x = agent->position.x;
     msg->position.y = agent->position.y;
-    msg->plane = agent->plane;
+    msg->plane = agent->position.plane;
     msg->unk0 = 0;
     msg->is_cinematic = 0;
     memset(msg->unk1, 0, sizeof(msg->unk1));
