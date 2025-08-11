@@ -71,7 +71,7 @@ struct Portal {
 typedef array(Portal) ArrayPortal;
 
 typedef struct PathPlane {
-    uint32_t              plane_id;
+    uint16_t              plane_id;
     Vec2fArray            vectors;
     PathTrapezoidArray    trapezoids;
     uint32_t              next_trap_idx;
@@ -112,12 +112,12 @@ typedef struct PathBuildStep {
 } PathBuildStep;
 typedef array(PathBuildStep) PathBuildStepArray;
 
-typedef struct PathContext {
+typedef struct GmPathContext {
     PathStaticData     static_data;
     PathFindNodeArray  nodes;
     PathHeapArray      prioq;
     PathBuildStepArray steps;
-} PathContext;
+} GmPathContext;
 
 typedef struct Waypoint {
     GmPos    pos;
@@ -125,7 +125,4 @@ typedef struct Waypoint {
 } Waypoint;
 typedef array(Waypoint) WaypointArray;
 
-PathTrapezoid* FindTrapezoid(PathContext *context, GmPos pos);
-PathTrapezoid* SearchTrapezoid(PathContext *context, Vec2f pos);
-
-bool PathFinding(PathContext *context, GmPos src_pos, GmPos dst_pos, WaypointArray *waypoints);
+bool PathFinding(GmPathContext *context, GmPos src_pos, GmPos dst_pos, WaypointArray *waypoints);

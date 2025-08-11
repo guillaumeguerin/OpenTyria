@@ -1,6 +1,6 @@
 #pragma once
 
-PathTrapezoid* FindTrapezoid(PathContext *context, GmPos pos)
+PathTrapezoid* PathFindTrapezoid(GmPathContext *context, GmPos pos)
 {
     ArrayPathPlane *planes = &context->static_data.planes;
     if (planes->len <= pos.plane)
@@ -156,7 +156,7 @@ Vec2f PathVec2fUnit(Vec2f v)
 }
 
 void PathAddNode(
-    PathContext *context,
+    GmPathContext *context,
     PathFindNode *parent,
     PathTrapezoid *trap,
     GmPos pos,
@@ -296,7 +296,7 @@ void FindPointOnNextTrap(float min_left_x, float max_right_x, float next_y, Vec2
     }
 }
 
-void PathVisitTrap(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, GmPos cross_pos, float max_cost)
+void PathVisitTrap(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, GmPos cross_pos, float max_cost)
 {
     float dist_to_trap = PathVec2fDist(curr_node->point.pos.v2, cross_pos.v2);
     float cost_to_trap = curr_node->cost_to_node + dist_to_trap;
@@ -331,7 +331,7 @@ void PathVisitTrap(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos,
     PathAddNode(context, curr_node, neighbor, cross_pos, cost_to_trap, new_estimated_cost);
 }
 
-void PathVisitAbove(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, float max_cost)
+void PathVisitAbove(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, float max_cost)
 {
     PathTrapezoid *trap = curr_node->point.trap;
     float xl = fmaxf(neighbor->xbl, trap->xtl);
@@ -342,7 +342,7 @@ void PathVisitAbove(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos
     PathVisitTrap(context, curr_node, dst_pos, neighbor, cross_pos, max_cost);
 }
 
-void PathVisitBellow(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, float max_cost)
+void PathVisitBellow(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, float max_cost)
 {
     PathTrapezoid *trap = curr_node->point.trap;
     float xl = fmaxf(neighbor->xtl, trap->xbl);
@@ -400,7 +400,7 @@ void PickNextPoint(Vec2f point1, Vec2f point2, Vec2f cur_pos, Vec2f dst_pos, Vec
     }
 }
 
-void PathVisitPortalLeft(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos, uint16_t portal_id, float max_cost)
+void PathVisitPortalLeft(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, uint16_t portal_id, float max_cost)
 {
     ArrayPortal *portals = &array_at(&context->static_data.planes, curr_node->point.pos.plane).portals;
     Portal *portal = &array_at(portals, portal_id);
@@ -454,7 +454,7 @@ void PathVisitPortalLeft(PathContext *context, PathFindNode *curr_node, Vec2f ds
     }
 }
 
-void PathVisitPortalRight(PathContext *context, PathFindNode *curr_node, Vec2f dst_pos, uint16_t portal_id, float max_cost)
+void PathVisitPortalRight(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, uint16_t portal_id, float max_cost)
 {
     ArrayPortal *portals = &array_at(&context->static_data.planes, curr_node->point.pos.plane).portals;
     Portal *portal = &array_at(portals, portal_id);
@@ -529,7 +529,7 @@ typedef struct PathFindBound {
 } PathFindBound;
 
 typedef struct PathBuildHelper {
-    PathContext *context;
+    GmPathContext *context;
     PathFindBound left_bound;
     PathFindBound right_bound;
     PathFindPoint curr_start_point;
@@ -764,7 +764,7 @@ bool GetPortalAndCheckTrapAdjacent(PathBuildHelper *helper, uint32_t portal_id, 
 }
 
 void PathCreateWaypoints(
-    PathContext *context,
+    GmPathContext *context,
     PathFindPoint src_point, PathFindPoint dst_point,
     WaypointArray *waypoints)
 {
@@ -877,15 +877,15 @@ void PathCreateWaypoints(
     }
 }
 
-bool PathFinding(PathContext *context, GmPos src_pos, GmPos dst_pos, WaypointArray *waypoints)
+bool PathFinding(GmPathContext *context, GmPos src_pos, GmPos dst_pos, WaypointArray *waypoints)
 {
     const float MAX_COST = INFINITY;
 
     PathTrapezoid *src_trap, *dst_trap;
 
-    if ((src_trap = FindTrapezoid(context, src_pos)) == NULL)
+    if ((src_trap = PathFindTrapezoid(context, src_pos)) == NULL)
         return false;
-    if ((dst_trap = FindTrapezoid(context, dst_pos)) == NULL)
+    if ((dst_trap = PathFindTrapezoid(context, dst_pos)) == NULL)
         return false;
 
     if (src_trap == dst_trap) {

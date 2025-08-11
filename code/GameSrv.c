@@ -82,6 +82,7 @@ void GameSrv_Free(GameSrv *srv)
     array_free(&srv->agents);
     array_free(&srv->free_agents_slots);
     array_free(&srv->text_builder);
+    GmMapContext_Free(&srv->map_context);
     Db_Close(&srv->database);
     FaClose(&srv->archive);
 }
@@ -939,11 +940,20 @@ void GameSrv_Poll(GameSrv *srv)
     }
 }
 
+GmPos GameSrv_PickSpawn(GameSrv *srv)
+{
+    assert(srv->map_static_config);
+    GmPos result = {0};
+    if (srv->map_static_config->n_spawnpoints != 0) {
+        result = srv->map_static_config->spawnpoints[0];
+    }
+    return result;
+}
+
 void GameSrv_CreatePlayerAgent(GameSrv *srv, GmPlayer *player)
 {
     GmAgent *agent = GameSrv_CreateAgent(srv);
-    agent->position.x = -9067.f;
-    agent->position.y = 13218.f;
+    agent->position    = GameSrv_PickSpawn(srv).v2;
     agent->direction.x = 1.f;
     agent->direction.y = 0.f;
     agent->model_id = CHAR_CLASS_PLAYER_BASE | player->player_id;
@@ -1780,6 +1790,43 @@ void GameSrv_Update(GameSrv *srv)
     array_clear(&srv->connections_with_event);
 }
 
+int GameSrv_LoadMap(GameSrv *srv)
+{
+    int err;
+
+    MapId map_id;
+    if ((err = MapId_FromInt(srv->map_id, &map_id)) != 0)
+        return err;
+
+    if ((srv->map_static_config = GetMapConfigForMapId(map_id)) == NULL) {
+        log_warn("No config for map %d, falling back to default", (int) map_id);
+        srv->map_static_config = GetMapConfigForMapId(MapId_KamadanJewelOfIstanOutpost);
+    }
+
+    if (srv->map_static_config == NULL) {
+        log_error("Couldn't get the static map config for map %d", (int) map_id);
+        return ERR_UNSUCCESSFUL;
+    }
+
+    array_uint8_t content = {0};
+    if ((err = FaGetFile(&srv->archive, srv->map_static_config->map_file_id, &content)) != 0) {
+        log_error("Couldn't read the file %" PRIu32, srv->map_static_config->map_file_id);
+        goto cleanup;
+    }
+
+    if ((err = GmImportMap(&srv->map_context, (slice_uint8_t) { .ptr = content.ptr, .len = content.len })) != 0) {
+        goto cleanup;
+    }
+
+cleanup:
+    if (err != 0) {
+        GmMapContext_Free(&srv->map_context);
+    }
+
+    array_free(&content);
+    return err;
+}
+
 void GameSrv_ThreadEntry(void *param)
 {
     GameSrv *srv = (GameSrv *)param;
@@ -1791,9 +1838,15 @@ void GameSrv_ThreadEntry(void *param)
 int GameSrv_Start(GameSrv *srv)
 {
     int err;
+
+    if ((err = GameSrv_LoadMap(srv)) != 0) {
+        return err;
+    }
+
     if ((err = sys_thread_create(&srv->thread, GameSrv_ThreadEntry, srv)) != 0) {
         return err;
     }
+
     return ERR_OK;
 }
 

@@ -1,3 +1,5 @@
+#pragma once
+
 // 0  = main town
 // 1  = main explorable
 // 2  = guild hall

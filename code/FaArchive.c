@@ -183,17 +183,17 @@ int FaGetFile(FileArchive *archive, uint32_t file_hash, array_uint8_t *result)
 
     if (entry.compressed != 0) {
         if (result->len < 4) {
-            fprintf(stderr, "[file:%" PRIu32 "] Not enough bytes to get the decrypted file size\n", file_idx);
+            log_error("[file:%" PRIu32 "] Not enough bytes to get the decrypted file size\n", file_idx);
             return ERR_UNSUCCESSFUL;
         }
 
         uint32_t decompressed_size = le32dec(&buffer[result->len - 4]);
 
         array_uint8_t content = {0};
-        if (!FaDecompress(buffer, result->len - 4, decompressed_size, &content)) {
-            fprintf(stderr, "[%" PRIu32 "] Failed to decompress file\n", file_idx);
+        if ((err = FaDecompress(buffer, result->len - 4, decompressed_size, &content)) != 0) {
+            log_error("[%" PRIu32 "] Failed to decompress file\n", file_idx);
             array_free(&content);
-            return 1;
+            return err;
         }
 
         array_free(result);

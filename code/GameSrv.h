@@ -63,6 +63,7 @@ typedef struct GameSrv {
     DistrictLanguage         language;
     MapType                  map_type;
     uint32_t                 district_number;
+    GmMapConfig             *map_static_config;
     Iocp                     iocp;
     Database                 database;
     FileArchive              archive;
@@ -93,6 +94,7 @@ typedef struct GameSrv {
     GameSrvMsg               srv_msg;
     int64_t                  last_world_tick;
     array_uint16_t           text_builder;
+    GmMapContext             map_context;
 } GameSrv;
 typedef array(GameSrv *) GameSrvArray;
 

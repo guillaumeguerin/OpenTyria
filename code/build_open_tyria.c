@@ -95,6 +95,7 @@
 #include "GmMath.h"
 
 #include "GmMaps.h"
+#include "GmMapsConfig.h"
 #include "GmTitles.h"
 #include "GmAgentProperties.h"
 #include "GmAttributes.h"
@@ -117,6 +118,7 @@
 #include "GmText.h"
 #include "GmTitleConstData.h"
 #include "GmDefaultArmors.h"
+#include "GmMapDataImport.h"
 
 #include "FaArchive.h"
 #include "FaCompress.h"
@@ -147,6 +149,8 @@
 #include "GmDefaultArmors.c"
 #include "GmInventory.c"
 #include "GmItem.c"
+#include "GmMapsConfig.c"
+#include "GmMapDataImport.c"
 #include "GmParty.c"
 #include "GmPathHeap.c"
 #include "GmPaths.c"
