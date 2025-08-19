@@ -396,7 +396,7 @@ int GameSrv_HandleMoveToCoord(GameSrv *srv, uint16_t player_id, GameSrv_MoveToCo
     }
 
     agent->destination.v2 = msg->pos;
-    agent->destination.plane = msg->plane;
+    agent->destination.plane = (uint16_t) msg->plane;
     agent->speed = agent->speed_base;
 
     float dx = agent->destination.x - agent->position.x;
