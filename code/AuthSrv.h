@@ -2,6 +2,8 @@
 
 #define AUTH_CMSG_VERSION_HEADER 0xC0400
 #define GAME_CMSG_VERSION_HEADER 0xC0500
+#define CTRL_CMSG_VERSION_HEADER 0xC0FFF
+
 #define CMSG_CLIENT_SEED_HEADER  0x4200
 #define SMSG_SERVER_SEED_HEADER  0x1601
 
@@ -18,22 +20,24 @@ typedef enum ConnType {
     ConnType_None,
     ConnType_Auth,
     ConnType_Game,
+    ConnType_Ctrl,
 } ConnType;
 
 typedef struct Connection {
-    uintptr_t             token;
-    IoSource              source;
-    SocketAddr            peer_addr;
-    uint8_t               incoming[256];
-    size_t                n_incoming;
-    bool                  writable;
-    uint8_t               master_secret[20];
-    ConnState             state;
-    ConnType              type;
+    uintptr_t  token;
+    IoSource   source;
+    SocketAddr peer_addr;
+    uint8_t    incoming[256];
+    size_t     n_incoming;
+    bool       writable;
+    uint8_t    master_secret[20];
+    ConnState  state;
+    ConnType   type;
     union
     {
         AUTH_CMSG_VERSION auth_version;
         GAME_CMSG_VERSION game_version;
+        CTRL_CMSG_VERSION ctrl_version;
     };
 } Connection;
 
@@ -73,6 +77,7 @@ typedef enum IoObjectType {
     IoObjectType_Listener,
     IoObjectType_Connection,
     IoObjectType_AuthConnection,
+    IoObjectType_CtrlConnection,
 } IoObjectType;
 
 typedef struct IoObject {
@@ -82,6 +87,7 @@ typedef struct IoObject {
         IoSource       listener;
         Connection     connection;
         AuthConnection auth_connection;
+        CtrlConn       ctrl_connection;
     };
 } IoObject;
 
@@ -91,11 +97,35 @@ typedef struct IoObjectMap {
 } IoObjectMap;
 
 typedef struct ConnectedAccountInfo {
-    GmUuid      key; // account id
-    GmUuid      char_id;
-    uint32_t    map_token;
-    uintptr_t   auth_conn_token;
+    union
+    {
+        GmUuid key;
+        GmUuid account_id; 
+    };
+    GmUuid    char_id;
+    uint32_t  current_server_id;
+    uint32_t  current_player_id;
+    uintptr_t auth_conn_token;
 } ConnectedAccountInfo;
+
+typedef struct AuthTransfer {
+    uintptr_t conn_token;
+    uint32_t  req_id;
+    uint32_t  player_token;
+} AuthTransfer;
+typedef array(AuthTransfer) AuthTransferArray;
+
+typedef struct GameSrvMetadata {
+    union
+    {
+        uint32_t key;
+        uint32_t server_id;
+    };
+    uintptr_t         ctrl_conn;
+    GameSrvDistrict   map_district;
+    bool              ready;
+    AuthTransferArray pending_transfers;
+} GameSrvMetadata;
 
 typedef struct AuthSrv {
     Iocp                     iocp;
@@ -106,11 +136,14 @@ typedef struct AuthSrv {
     ArrayEvent               events;
     mbedtls_chacha20_context random;
     Database                 database;
-    GameSrvArray             game_servers;
     ConnectedAccountInfo    *connected_accounts;
+    SocketAddr               internal_address;
+    GameSrvMetadata         *games;
 } AuthSrv;
 
 int  AuthSrv_Setup(AuthSrv *srv);
 void AuthSrv_Free(AuthSrv *srv);
 int  AuthSrv_Bind(AuthSrv *srv, const char *addr, size_t addr_len);
 void AuthSrv_Update(AuthSrv *srv);
+
+void AuthSrv_CompleteGameTransfer(AuthSrv *srv, AuthTransfer transfer, uint32_t server_id, uint32_t map_id);

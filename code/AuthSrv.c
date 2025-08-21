@@ -5,14 +5,6 @@
 mbedtls_mpi prime_modulus;
 mbedtls_mpi server_private;
 
-typedef struct RequestGameInstanceParams {
-    uint16_t         map_id;
-    MapType          map_type;
-    DistrictRegion   region;
-    DistrictLanguage language;
-    uint32_t         district_number;
-} RequestGameInstanceParams;
-
 void arc4_hash(const uint8_t *key, uint8_t *digest)
 {
     uint32_t A = 0x67452301;
@@ -72,7 +64,7 @@ void Connection_RemoveIncoming(Connection *conn, size_t count)
     }
 }
 
-int Connection_ReadVersion(AuthSrv *srv, Connection *conn)
+int Connection_ReadVersion(Connection *conn)
 {
     size_t consumed = 0;
     const uint8_t *data = conn->incoming;
@@ -122,39 +114,23 @@ int Connection_ReadVersion(AuthSrv *srv, Connection *conn)
             return ERR_WOULDBLOCK;
         }
 
-        GmUuid account_id;
-        uuid_dec_le(&account_id, version.account_uuid);
-        GmUuid char_id;
-        uuid_dec_le(&char_id, version.character_uuid);
-
-        size_t idx;
-        for (idx = 0; idx < srv->game_servers.len; ++idx) {
-            if (srv->game_servers.ptr[idx]->map_token == version.map_token) {
-                break;
-            }
-        }
-
-        if (idx == srv->game_servers.len) {
-            log_error("Player tried to connect to a map that doesn't exist");
-            return ERR_BAD_USER_DATA;
-        }
-
-        GameSrv *gm = srv->game_servers.ptr[idx];
-        for (idx = 0; idx < gm->clients.len; ++idx) {
-            if (gm->clients.ptr[idx].player_token == version.player_token) {
-                break;
-            }
-        }
-
-        if (idx == gm->clients.len) {
-            log_error("Player tried to connect to a map he doesn't have a slot for");
-            return ERR_BAD_USER_DATA;
-        }
-
         Connection_RemoveIncoming(conn, consumed);
         conn->state = ConnState_AwaitKeyExchange;
         conn->type = ConnType_Game;
         conn->game_version = version;
+        return ERR_OK;
+    } else if (header == CTRL_CMSG_VERSION_HEADER) {
+        if (size < sizeof(CTRL_CMSG_VERSION)) {
+            return ERR_WOULDBLOCK;
+        }
+
+        CTRL_CMSG_VERSION version;
+        version.header = header;
+
+        Connection_RemoveIncoming(conn, consumed);
+        conn->state = ConnState_AwaitDone;
+        conn->type = ConnType_Ctrl;
+        conn->ctrl_version = version;
         return ERR_OK;
     } else {
         return ERR_BAD_USER_DATA;
@@ -339,8 +315,8 @@ void AuthSrv_Free(AuthSrv *srv)
     array_free(&srv->events);
     mbedtls_chacha20_free(&srv->random);
     Db_Close(&srv->database);
-    array_free(&srv->game_servers);
     stbds_hmfree(srv->connected_accounts);
+    stbds_hmfree(srv->games);
 }
 
 bool AuthSrv_IssueNextToken(AuthSrv *srv, uintptr_t *result)
@@ -363,6 +339,24 @@ IoObject *AuthSrv_GetObject(AuthSrv *srv, uintptr_t token)
     return &srv->objects[(size_t)idx].value;
 }
 
+AuthConnection *AuthSrv_GetAuthConnection(AuthSrv *srv, uintptr_t token)
+{
+    IoObject *obj = AuthSrv_GetObject(srv, token);
+    if (obj == NULL || obj->type != IoObjectType_AuthConnection) {
+        return NULL;
+    }
+    return &obj->auth_connection;
+}
+
+CtrlConn *AuthSrv_GetCtrlConn(AuthSrv *srv, uintptr_t token)
+{
+    IoObject *obj = AuthSrv_GetObject(srv, token);
+    if (obj == NULL || obj->type != IoObjectType_CtrlConnection) {
+        return NULL;
+    }
+    return &obj->ctrl_connection;
+}
+
 ConnectedAccountInfo* AuthSrv_GetConnectedAccount(AuthSrv *srv, GmUuid account_id)
 {
     ptrdiff_t idx;
@@ -379,9 +373,9 @@ void AuthSrv_DelConnectedAccount(AuthSrv *srv, GmUuid account_id)
 
 ConnectedAccountInfo* AuthSrv_AddConnectedAccount(AuthSrv *srv, GmUuid account_id)
 {
-    ConnectedAccountInfo info = {0};
-    info.key = account_id;
-    stbds_hmputs(srv->connected_accounts, info);
+    ConnectedAccountInfo connected = {0};
+    connected.key = account_id;
+    stbds_hmputs(srv->connected_accounts, connected);
     return &srv->connected_accounts[stbds_temp(srv->connected_accounts - 1)];
 }
 
@@ -396,6 +390,11 @@ void AuthSrv_FreeAuthConnectionByToken(AuthSrv *srv, uintptr_t token)
     case IoObjectType_AuthConnection:
         IoSource_reset(&object->auth_connection.source);
         array_clear(&object->auth_connection.outgoing);
+        array_add(&srv->objects_to_remove, token);
+        break;
+    case IoObjectType_CtrlConnection:
+        IoSource_reset(&object->ctrl_connection.source);
+        array_clear(&object->ctrl_connection.outgoing);
         array_add(&srv->objects_to_remove, token);
         break;
     default:
@@ -415,9 +414,16 @@ void AuthSrv_CloseAuthConnection(AuthSrv *srv, AuthConnection *conn)
     }
 
     connected->auth_conn_token = 0;
-    if (connected->map_token == 0) {
+    if (connected->current_server_id == 0) {
         AuthSrv_DelConnectedAccount(srv, conn->account_id);
     }
+}
+
+void AuthSrv_CloseCtrlConnection(AuthSrv *srv, CtrlConn *conn)
+{
+    IoSource_reset(&conn->source);
+    array_clear(&conn->outgoing);
+    array_add(&srv->objects_to_remove, conn->token);
 }
 
 void AuthSrv_GetMessages(AuthSrv *srv, AuthConnection *conn)
@@ -630,12 +636,14 @@ int AuthSrv_HandlePortalAccountLogin(AuthSrv *srv, AuthConnection *conn, AuthCli
 
     if ((err = Db_GetAccount(&srv->database, conn->account_id, &conn->account)) != 0) {
         AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
+        AuthSrv_DelConnectedAccount(srv, connected_account->account_id);
         return ERR_OK;
     }
     
     array_clear(&conn->characters);
     if ((err = Db_GetCharacters(&srv->database, conn->account_id, &conn->characters)) != 0) {
         AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
+        AuthSrv_DelConnectedAccount(srv, connected_account->account_id);
         return ERR_OK;
     }
 
@@ -645,6 +653,10 @@ int AuthSrv_HandlePortalAccountLogin(AuthSrv *srv, AuthConnection *conn, AuthCli
             conn->selected_character_idx = idx;
             break;
         }
+    }
+
+    if (conn->selected_character_idx < conn->characters.len) {
+        connected_account->char_id = conn->characters.ptr[conn->selected_character_idx].char_id;
     }
 
     AuthSrv_SendCharactersInfo(conn, msg->req_id);
@@ -708,54 +720,6 @@ int AuthSrv_HandleChangePlayCharacter(AuthConnection *conn, AuthCliMsg *msg)
     return ERR_OK;
 }
 
-int AuthSrv_FindCompatibleGameSrv(AuthSrv *srv, RequestGameInstanceParams params, size_t *result)
-{
-    GameSrvArray game_servers = srv->game_servers;
-    for (size_t idx = 0; idx < game_servers.len; ++idx) {
-        GameSrv *gm = game_servers.ptr[idx];
-        if (gm->map_id == params.map_id && gm->map_type == params.map_type &&
-            gm->region == params.region && gm->language == params.language &&
-            (params.district_number == 0 || gm->district_number == params.district_number))
-        {
-            *result = idx;
-            return ERR_OK;
-        }
-    }
-    return ERR_UNSUCCESSFUL;
-}
-
-int AuthSrv_AllocGameServer(AuthSrv *srv, RequestGameInstanceParams params, size_t *result)
-{
-    GameSrv *gm;
-    if ((gm = calloc(1, sizeof(*gm))) == NULL) {
-        return ERR_OUT_OF_MEMORY;
-    }
-
-    int err;
-    if ((err = GameSrv_Setup(gm)) != 0) {
-        free(gm);
-        return err;
-    }
-
-    random_get_bytes(&srv->random, &gm->map_token, sizeof(gm->map_token));
-    gm->map_id = params.map_id;
-    gm->region = params.region;
-    gm->language = params.language;
-    gm->district_number = params.district_number;
-    gm->map_type = params.map_type;
-
-    if ((err = GameSrv_Start(gm)) != 0) {
-        log_error("Failed to start a game server");
-        GameSrv_Free(gm);
-        free(gm);
-        return err;
-    }
-
-    array_add(&srv->game_servers, gm);
-    *result = array_size(&srv->game_servers) - 1;
-    return ERR_OK;
-}
-
 int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCliMsg *cli_msg)
 {
     int err;
@@ -767,17 +731,17 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         return ERR_OK;
     }
 
-    RequestGameInstanceParams req = {0};
-    if ((err = MapType_FromInt(&req.map_type, msg->map_type)) != 0 ||
-        (err = DistrictRegion_FromInt(&req.region, msg->region)) != 0 ||
-        (err = DistrictLanguage_FromInt(&req.language, msg->language)) != 0)
+    GameSrvDistrict district = {0};
+    if ((err = MapType_FromInt(&district.map_type, msg->map_type)) != 0 ||
+        (err = DistrictRegion_FromInt(&district.region, msg->region)) != 0 ||
+        (err = DistrictLanguage_FromInt(&district.language, msg->language)) != 0)
     {
         log_error("Receive invalid client data from %04" PRIXPTR, conn->token);
         return ERR_BAD_USER_DATA;
     }
 
-    req.map_id = cast_u16(msg->map_id);
-    req.district_number = msg->district;
+    district.map_id = cast_u16(msg->map_id);
+    district.district_number = msg->district;
 
     if (conn->characters.len != 0 && !(conn->selected_character_idx < conn->characters.len)) {
         log_error("Client tried to join a server without a selected character");
@@ -790,30 +754,79 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         char_id = conn->characters.ptr[conn->selected_character_idx].char_id;
     }
 
-    // @Cleanup:
-    // Ensure the client isn't on an other game server.
+    ConnectedAccountInfo *connected;
+    if ((connected = AuthSrv_GetConnectedAccount(srv, conn->account_id)) == NULL) {
+        log_error("Account expected to be connected");
+        AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
+        return ERR_OK;
+    }
+
+    if (connected->current_server_id != 0) {
+        // @Cleanup: kick the client from the existing server and allow login.
+        log_warn("We should kick the user from the server");
+        AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
+        return ERR_OK;
+    }
 
     size_t idx;
-    if (AuthSrv_FindCompatibleGameSrv(srv, req, &idx) != 0) {
-        if (AuthSrv_AllocGameServer(srv, req, &idx) != 0) {
+    if (AuthSrvCtrl_FindCompatibleGameSrv(srv, district, &idx) != 0) {
+        if (AuthSrvCtrl_CreateServer(srv, district, &idx) != 0) {
             log_error("Couldn't allocate an appropriate game server");
             AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
             return ERR_OK;
         }
     }
 
-    GameSrv *gm = srv->game_servers.ptr[idx];
-    GameClient *cli = array_push(&gm->clients, 1);
-    memset(cli, 0, sizeof(*cli));
-    random_get_bytes(&srv->random, &cli->player_token, sizeof(cli->player_token));
-    cli->account_id = conn->account_id;
-    cli->char_id = char_id;
+    uint32_t player_token = random_uint32(&srv->random);
+
+    GameSrvMetadata *metadata = &srv->games[idx];
+    if (metadata->ctrl_conn == 0) {
+        AuthTransfer *transfer = array_push(&metadata->pending_transfers, 1);
+        transfer->conn_token = conn->token;
+        transfer->req_id = msg->req_id;
+        transfer->player_token = player_token;
+        connected->current_server_id = metadata->server_id;
+        connected->current_player_id = player_token;
+        return ERR_OK;
+    }
+
+    CtrlConn *ctrl_conn = AuthSrv_GetCtrlConn(srv, srv->games[idx].ctrl_conn);
+    if (ctrl_conn == NULL) {
+        log_error("Failed to find the ctrl connection");
+        AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
+        return ERR_OK;
+    }
 
     SocketAddr address = SocketAddr_LocalHostV4();
-    AuthSrv_SendGameServerInfo(conn, msg->req_id,
-        address, gm->map_token, cli->player_token, gm->map_id);
+    AuthSrv_SendGameServerInfo(
+        conn,
+        msg->req_id,
+        address,
+        metadata->server_id,
+        player_token,
+        metadata->map_district.map_id);
     AuthSrv_SendRequestResponse(conn, msg->req_id, 0);
+
     return ERR_OK;
+}
+
+void AuthSrv_CompleteGameTransfer(AuthSrv *srv, AuthTransfer transfer, uint32_t server_id, uint32_t map_id)
+{
+    AuthConnection *player_conn = AuthSrv_GetAuthConnection(srv, transfer.conn_token);
+    if (player_conn == NULL) {
+        log_warn("Connection %04" PRIXPTR " disconnected pending a transfer", transfer.conn_token);
+        return;
+    }
+
+    SocketAddr address = SocketAddr_LocalHostV4();
+    AuthSrv_SendGameServerInfo(
+        player_conn,
+        transfer.req_id,
+        address,
+        server_id,
+        transfer.player_token,
+        map_id);
+    AuthSrv_SendRequestResponse(player_conn, transfer.req_id, 0);
 }
 
 int AuthSrv_HandleClientHeartbeat(AuthConnection *conn, AuthCliMsg *cli_msg)
@@ -980,7 +993,7 @@ void AuthSrv_DoPostHandshake(AuthSrv *srv, Connection *conn)
 {
     int err;
     if (conn->type == ConnType_Auth) {
-        IoObject obj = {.type = IoObjectType_AuthConnection};
+        IoObject obj = { .type = IoObjectType_AuthConnection };
         AuthConnection *dst = &obj.auth_connection;
 
         dst->token = conn->token;
@@ -995,52 +1008,79 @@ void AuthSrv_DoPostHandshake(AuthSrv *srv, Connection *conn)
         log_info("Accepted Auth connection %04" PRIXPTR, dst->token);
         stbds_hmput(srv->objects, dst->token, obj);
     } else if (conn->type == ConnType_Game) {
-        size_t idx;
-        for (idx = 0; idx < srv->game_servers.len; ++idx) {
-            if (srv->game_servers.ptr[idx]->map_token == conn->game_version.map_token) {
-                break;
-            }
-        }
+        GmUuid account_id;
+        uuid_dec_le(&account_id, conn->game_version.account_uuid);
+        GmUuid char_id;
+        uuid_dec_le(&char_id, conn->game_version.character_uuid);
 
-        uintptr_t token = conn->token;
-        if (idx == srv->game_servers.len) {
+        ConnectedAccountInfo *connected = AuthSrv_GetConnectedAccount(srv, account_id);
+        if (!uuid_equals(&connected->char_id, &char_id) ||
+            connected->current_server_id != conn->game_version.map_token ||
+            connected->current_player_id != conn->game_version.player_token)
+        {
+            log_warn("User connected to game server with unexpected values");
             Connection_Free(conn);
-            stbds_hmdel(srv->objects, token);
+            stbds_hmdel(srv->objects, conn->token);
             return;
         }
 
-        GameSrv *gm = srv->game_servers.ptr[idx];
-        for (idx = 0; idx < gm->clients.len; ++idx) {
-            if (gm->clients.ptr[idx].player_token == conn->game_version.player_token) {
-                break;
-            }
-        }
-
-        if (idx == gm->clients.len) {
+        GameSrvMetadata* metadata;
+        if ((metadata = AuthSrvCtrl_GetGameSrvMetadata(srv, connected->current_server_id)) == NULL) {
+            log_warn("Can't find the game metadata for the server %" PRIu32, connected->current_server_id);
             Connection_Free(conn);
-            stbds_hmdel(srv->objects, token);
+            stbds_hmdel(srv->objects, conn->token);
             return;
         }
 
-        GameClient *cli = &gm->clients.ptr[idx];
+        CtrlConn *ctrl_conn;
+        if ((ctrl_conn = AuthSrv_GetCtrlConn(srv, metadata->ctrl_conn)) == NULL) {
+            log_warn("Can't find the ctrl conn for the server %" PRIu32, connected->current_server_id);
+            Connection_Free(conn);
+            stbds_hmdel(srv->objects, conn->token);
+            return;
+        }
 
         if ((err = iocp_deregister(&srv->iocp, &conn->source)) != 0) {
             log_error("Failed to de-register socket when transferring connection to a game server");
             Connection_Free(conn);
-            stbds_hmdel(srv->objects, token);
+            stbds_hmdel(srv->objects, conn->token);
             return;
         }
 
-        AdminMsg msg = {AdminCmd_TransferUser};
-        msg.transfer_user.peer_addr = conn->peer_addr;
-        msg.transfer_user.source = IoSource_take(&conn->source);
-        msg.transfer_user.token = conn->token;
-        arc4_hash(conn->master_secret, msg.transfer_user.cipher_init_key);
-        msg.transfer_user.account_id = cli->account_id;
-        msg.transfer_user.char_id = cli->char_id;
-        GameSrv_SendAdminMsg(gm, &msg);
+        CtrlMsg msg = {CtrlMsgId_TransferUser};
+        msg.TransferUser.peer_addr = conn->peer_addr;
+        msg.TransferUser.source = IoSource_take(&conn->source);
+        msg.TransferUser.token = conn->token;
+        arc4_hash(conn->master_secret, msg.TransferUser.cipher_init_key);
+        msg.TransferUser.account_id = connected->account_id;
+        msg.TransferUser.char_id = connected->char_id;
+        CtrlConn_WriteMessage(ctrl_conn, &msg, sizeof(msg.TransferUser));
 
-        stbds_hmdel(srv->objects, token);
+        stbds_hmdel(srv->objects, conn->token);
+    } else if (conn->type == ConnType_Ctrl) {
+        IoObject obj = { .type = IoObjectType_CtrlConnection };
+        CtrlConn *dst = &obj.ctrl_connection;
+
+        dst->token = conn->token;
+        dst->source = conn->source;
+        dst->peer_addr = conn->peer_addr;
+
+        if (conn->n_incoming != 0) {
+            uint8_t *buffer;
+            if ((buffer = array_push(&dst->incoming, conn->n_incoming)) == NULL) {
+                log_error("out of memory");
+                abort();
+            }
+
+            memcpy(buffer, conn->incoming, conn->n_incoming);
+            if ((err = CtrlConn_GetMessages(dst)) != 0) {
+                log_error("CtrlConn_GetMessages failed, err: %d", err);
+                abort();
+            }
+        }
+
+        log_info("Accepted Ctrl connection %04" PRIXPTR, dst->token);
+        stbds_hmput(srv->objects, dst->token, obj);
     } else {
         abort();
     }
@@ -1052,7 +1092,7 @@ void AuthSrv_DoHandshake(AuthSrv *srv, Connection *conn)
     do {
         switch (conn->state) {
         case ConnState_AwaitHello:
-            err = Connection_ReadVersion(srv, conn);
+            err = Connection_ReadVersion(conn);
             break;
         case ConnState_AwaitKeyExchange:
             err = Connection_DoKeyExchange(conn);
@@ -1228,6 +1268,40 @@ void AuthSrv_ProcessAuthConnectionEvent(AuthSrv *srv, AuthConnection *conn, Even
     array_clear(&conn->messages);
 }
 
+void AuthSrv_ProcessCtrlConnectionEvent(AuthSrv *srv, CtrlConn *conn, Event event)
+{
+    int err;
+
+    if ((err = CtrlConn_ProcessEvent(conn, event)) != 0) {
+        log_error("CtrlConn_ProcessEvent failed, err: %d", err);
+    }
+
+    for (size_t idx = 0; idx < conn->messages.len; ++idx) {
+        CtrlMsg *msg = conn->messages.ptr[idx];
+
+        if (msg == NULL) {
+            array_add(&srv->objects_to_remove, conn->token);
+            break;
+        }
+
+        err = ERR_OK;
+        switch (msg->msg_id) {
+        case CtrlMsgId_ServerReady:
+            err = AuthSrvCtrl_ProcessServerReady(srv, conn, msg);
+            break;
+        case CtrlMsgId_PlayerLeft:
+            break;
+        default:
+            err = ERR_UNSUCCESSFUL;
+            log_error(
+                "Unhandled Ctrl packet with header %" PRIu16 " (0x%" PRIX16 ")",
+                msg->msg_id,
+                msg->msg_id
+            );
+        }
+    }
+}
+
 void AuthSrv_ProcessEvent(AuthSrv *srv, Event event)
 {
     IoObject *obj;
@@ -1245,6 +1319,9 @@ void AuthSrv_ProcessEvent(AuthSrv *srv, Event event)
         break;
     case IoObjectType_AuthConnection:
         AuthSrv_ProcessAuthConnectionEvent(srv, &obj->auth_connection, event);
+        break;
+    case IoObjectType_CtrlConnection:
+        AuthSrv_ProcessCtrlConnectionEvent(srv, &obj->ctrl_connection, event);
         break;
     default:
         abort();
@@ -1280,17 +1357,25 @@ void AuthSrv_Update(AuthSrv *srv)
     size_t n_objects = stbds_hmlen(srv->objects);
     for (size_t idx = 0; idx < n_objects; ++idx) {
         IoObject *obj = &srv->objects[idx].value;
-        if (obj->type != IoObjectType_AuthConnection) {
-            continue;
-        }
-
-        AuthConnection *conn = &obj->auth_connection;
-        if (array_empty(&conn->outgoing)) {
-            continue;
-        }
-
-        if ((err = AuthConnection_FlushOutgoingBuffer(conn)) != 0) {
-            AuthSrv_CloseAuthConnection(srv, conn);
+        switch (obj->type) {
+        case IoObjectType_AuthConnection:
+            if (array_empty(&obj->auth_connection.outgoing)) {
+                break;
+            }
+            if ((err = AuthConnection_FlushOutgoingBuffer(&obj->auth_connection)) != 0) {
+                AuthSrv_CloseAuthConnection(srv, &obj->auth_connection);
+            }
+            break;
+        case IoObjectType_CtrlConnection:
+            if (array_empty(&obj->ctrl_connection.outgoing)) {
+                break;
+            }
+            if ((err = CtrlConn_FlushOutgoingBuffer(&obj->ctrl_connection)) != 0) {
+                // CtrlConn_CloseConnection(srv, &obj->ctrl_connection);
+            }
+            break;
+        default:
+            break;
         }
     }
 
@@ -1328,6 +1413,14 @@ void AuthSrv_Update(AuthSrv *srv)
                 flags |= IOCPF_WRITE;
             }
             if ((err = iocp_reregister(&srv->iocp, &obj->auth_connection.source, flags)) != 0) {
+                log_error("Couldn't re-register connection %04" PRIXPTR ", err: %d", token, err);
+            }
+            break;
+        case IoObjectType_CtrlConnection:
+            if (!obj->ctrl_connection.writable) {
+                flags |= IOCPF_WRITE;
+            }
+            if ((err = iocp_reregister(&srv->iocp, &obj->ctrl_connection.source, flags)) != 0) {
                 log_error("Couldn't re-register connection %04" PRIXPTR ", err: %d", token, err);
             }
             break;

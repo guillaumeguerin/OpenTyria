@@ -36,3 +36,10 @@ void random_get_bytes(mbedtls_chacha20_context *ctx, void *buffer, size_t size)
         generated += to_generate;
     }
 }
+
+uint32_t random_uint32(mbedtls_chacha20_context *ctx)
+{
+    uint32_t result;
+    random_get_bytes(ctx, &result, sizeof(result));
+    return result;
+}

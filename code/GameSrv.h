@@ -1,47 +1,14 @@
 #pragma once
 
-typedef enum AdminCmd {
-    AdminCmd_None,
-    AdminCmd_Quit,
-    AdminCmd_TransferUser,
-} AdminCmd;
-
-typedef struct AdminMsg_TransferUser {
-    AdminCmd    cmd;
-    SocketAddr  peer_addr;
-    IoSource    source;
-    uintptr_t   token;
-    uint8_t     cipher_init_key[20];
-    bool        reconnection;
-    GmUuid      account_id;
-    GmUuid      char_id;
-} AdminMsg_TransferUser;
-
-typedef union AdminMsg {
-    AdminCmd cmd;
-    union
-    {
-        AdminMsg_TransferUser transfer_user;
-    };
-} AdminMsg;
-typedef array(AdminMsg) AdminMsgArray;
-
-typedef struct GameClient {
-    uint32_t    player_token;
-    GmUuid      account_id;
-    GmUuid      char_id;
-} GameClient;
-typedef array(GameClient) GameClientArray;
-
 typedef struct GameConnection {
-    uintptr_t             token;
-    IoSource              source;
-    array_uint8_t         incoming;
-    array_uint8_t         outgoing;
-    bool                  writable;
-    arc4_context          cipher_enc;
-    arc4_context          cipher_dec;
-    uint16_t              player_id;
+    uintptr_t     token;
+    IoSource      source;
+    array_uint8_t incoming;
+    array_uint8_t outgoing;
+    bool          writable;
+    arc4_context  cipher_enc;
+    arc4_context  cipher_dec;
+    uint16_t      player_id;
 } GameConnection;
 
 typedef struct GameConnMap {
@@ -55,26 +22,54 @@ typedef struct GamePlayerMsg {
 } GamePlayerMsg;
 typedef array(GamePlayerMsg) GamePlayerMsgArray;
 
+typedef struct GameSrvDistrict {
+    uint16_t         map_id;
+    DistrictRegion   region;
+    DistrictLanguage language;
+    MapType          map_type;
+    uint32_t         district_number;
+} GameSrvDistrict;
+
+bool GameSrvDistrict_Equal(GameSrvDistrict left, GameSrvDistrict right)
+{
+    assert(left.district_number != 0 && right.district_number != 0);
+    return left.map_id == right.map_id &&
+           left.region == right.region &&
+           left.language == right.language &&
+           left.map_type == right.map_type &&
+           left.district_number == right.district_number;
+}
+
+bool GameSrvDistrict_IsCompatible(GameSrvDistrict left, GameSrvDistrict right)
+{
+    return left.map_id == right.map_id &&
+           left.region == right.region &&
+           left.language == right.language &&
+           left.map_type == right.map_type &&
+           (right.district_number == 0 || left.district_number == right.district_number);
+}
+
+typedef struct GameSrvSetupParams {
+    uint32_t        server_id;
+    GameSrvDistrict district;
+    SocketAddr      ctrl_srv_addr;
+} GameSrvSetupParams;
+
 typedef struct GameSrv {
     Thread                   thread;
-    uint32_t                 map_token;
-    uint16_t                 map_id;
-    DistrictRegion           region;
-    DistrictLanguage         language;
-    MapType                  map_type;
-    uint32_t                 district_number;
+    uint32_t                 server_id;
+    GameSrvDistrict          map_district;
     GmMapConfig             *map_static_config;
     Iocp                     iocp;
     Database                 database;
     FileArchive              archive;
+    CtrlConn                 ctrl_conn;
     bool                     quit_signaled;
     GameConnMap             *connections;
     array_uintptr_t          connections_with_event;
     array_uintptr_t          connections_to_remove;
     ArrayEvent               events;
     Mutex                    mtx;
-    AdminMsgArray            admin_messages;
-    GameClientArray          clients;
     GmPlayerArray            players;
     array_uint32_t           free_players_slots;
     size_t                   player_count;
@@ -98,7 +93,6 @@ typedef struct GameSrv {
 } GameSrv;
 typedef array(GameSrv *) GameSrvArray;
 
-int  GameSrv_Setup(GameSrv *srv);
+int  GameSrv_Setup(GameSrv *srv, GameSrvSetupParams params);
 void GameSrv_Free(GameSrv *srv);
 int  GameSrv_Start(GameSrv *srv);
-void GameSrv_SendAdminMsg(GameSrv *srv, AdminMsg *msg);

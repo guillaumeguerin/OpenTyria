@@ -72,6 +72,15 @@ int sys_enable_nonblocking(uintptr_t fd, bool enable)
     }
 }
 
+int sys_connect(uintptr_t fd, const struct sockaddr *addr, int namelen)
+{
+    if (connect(fd, addr, namelen) != SOCKET_ERROR) {
+        return 0;
+    } else {
+        return WSAGetLastError();
+    }
+}
+
 int sys_bind(uintptr_t fd, const struct sockaddr *addr, int namelen)
 {
     if (bind(fd, addr, namelen) != SOCKET_ERROR) {
@@ -175,6 +184,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 {
     Thread *thread = (Thread *) lpParameter;
     thread->start(thread->param);
+    (void) thread; // We can't use this value anymore, the thread func may release it.
     return 0;
 }
 
@@ -212,6 +222,17 @@ int sys_thread_join(Thread *thread)
     CloseHandle((HANDLE) thread->handle);
     thread->handle = 0;
 
+    return 0;
+}
+
+int sys_thread_detach(Thread *thread)
+{
+    if (thread->handle == 0) {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    CloseHandle((HANDLE) thread->handle);
+    thread->handle = 0;
     return 0;
 }
 

@@ -35,9 +35,41 @@ int GameConnection_FlushOutgoingBuffer(GameConnection *conn)
     return ERR_OK;
 }
 
-int GameSrv_Setup(GameSrv *srv)
+int GameSrv_ConnectCtrlConn(GameSrv *srv)
 {
     int err;
+    CtrlConn *conn = &srv->ctrl_conn;
+
+    uintptr_t fd;
+    if (!create_nonblocking_socket(&fd, AF_INET)) {
+        log_error("Couldn't create a socket for the control connection");
+        return ERR_UNSUCCESSFUL;
+    }
+
+    struct sockaddr addr;
+    SocketAddr_WriteSocketAddrStorage(&addr, &conn->peer_addr);
+
+    IoSource_setup(&conn->source, fd);
+    if ((err = sys_connect(fd, &addr, sizeof(addr))) != 0 && !sys_would_block(err)) {
+        log_error("sys_connect failed, %d", err);
+        return ERR_UNSUCCESSFUL;
+    }
+
+    if ((err = iocp_register(&srv->iocp, &conn->source, conn->token, IOCPF_READ | IOCPF_WRITE)) != 0) {
+        log_error("iocp_register failed, err: %d", err);
+        return err;
+    }
+
+    return 0;
+}
+
+int GameSrv_Setup(GameSrv *srv, GameSrvSetupParams params)
+{
+    int err;
+
+    srv->server_id = params.server_id;
+    srv->map_district = params.district;
+    srv->ctrl_conn.peer_addr = params.ctrl_srv_addr;
 
     if ((err = iocp_setup(&srv->iocp)) != 0) {
         return err;
@@ -62,6 +94,7 @@ int GameSrv_Setup(GameSrv *srv)
     }
 
     srv->creation_instance_time = sys_get_monotonic_time_ms();
+
     return ERR_OK;
 }
 
@@ -73,8 +106,6 @@ void GameSrv_Free(GameSrv *srv)
     array_free(&srv->connections_to_remove);
     array_free(&srv->events);
     sys_mutex_free(&srv->mtx);
-    array_free(&srv->admin_messages);
-    array_free(&srv->clients);
     array_free(&srv->players);
     array_free(&srv->free_players_slots);
     array_free(&srv->items);
@@ -83,6 +114,7 @@ void GameSrv_Free(GameSrv *srv)
     array_free(&srv->free_agents_slots);
     array_free(&srv->text_builder);
     GmMapContext_Free(&srv->map_context);
+    CtrlConn_Free(&srv->ctrl_conn);
     Db_Close(&srv->database);
     FaClose(&srv->archive);
 }
@@ -656,7 +688,7 @@ void GameSrv_SendCurrentMap(GameSrv *srv, GameConnection *conn)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_MAP_UPDATE_CURRENT);
     GameSrv_UpdateCurrentMap *msg = &buffer->update_current_map;
-    msg->map_id = srv->map_id;
+    msg->map_id = srv->map_district.map_id;
     msg->unk = 0;
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
@@ -672,10 +704,10 @@ void GameSrv_SendInstanceLoadInfo(GameSrv *srv, GameConnection *conn, GmPlayer *
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_INSTANCE_LOAD_INFO);
     GameSrv_InstanceInfo *msg = &buffer->instance_info;
     msg->agent = player->agent_id;
-    msg->map_id = srv->map_id;
+    msg->map_id = srv->map_district.map_id;
     msg->is_explorable = 0; // what to put here?
-    msg->district = srv->district_number;
-    msg->language = DistrictLanguage_ToInt(srv->language);
+    msg->district = srv->map_district.district_number;
+    msg->language = DistrictLanguage_ToInt(srv->map_district.language);
     msg->is_observer = 0;
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
@@ -798,7 +830,7 @@ void GameSrv_SendDownloadManifest(GameSrv *srv, GameConnection *conn)
         GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_INSTANCE_MANIFEST_DONE);
         GameSrv_InstanceManifestDone *msg = &buffer->instance_manifest_done;
         msg->download_phase = ManifestPhase_Phase1;
-        msg->map_id = srv->map_id;
+        msg->map_id = srv->map_district.map_id;
         msg->unk = 0;
         GameConnection_SendMessage(conn, buffer, sizeof(*msg));
     }
@@ -871,7 +903,7 @@ void GameSrv_PeerDisconnected(GameSrv *srv, GameConnection *conn)
     }
 }
 
-void GameSrv_ProcessEvent(GameSrv *srv, Event event)
+void GameSrv_ProcessGameEvent(GameSrv *srv, Event event)
 {
     UNREFERENCED_PARAMETER(srv);
 
@@ -923,20 +955,6 @@ void GameSrv_ProcessEvent(GameSrv *srv, Event event)
         }
 
         GameSrv_GetMessages(srv, conn);
-    }
-}
-
-void GameSrv_Poll(GameSrv *srv)
-{
-    int err;
-
-    array_clear(&srv->events);
-    while ((err = iocp_poll(&srv->iocp, &srv->events, 16)) != 0) {
-        if (err == ERR_TIMEOUT) {
-            break;
-        }
-        log_error("Failed to run 'iocp_poll', err: %d", err);
-        abort();
     }
 }
 
@@ -1168,7 +1186,7 @@ int GameSrv_CreatePlayerBags(GameSrv *srv, GmPlayer *player)
     return ERR_OK;
 }
 
-void GameSrv_HandleTransferUserCmd(GameSrv *srv, AdminMsg_TransferUser *msg)
+void GameSrvCtrl_HandleTransferUser(GameSrv *srv, CtrlMsg_TransferUser *msg)
 {
     GameConnection conn = {0};
     conn.token = msg->token;
@@ -1194,7 +1212,7 @@ void GameSrv_HandleTransferUserCmd(GameSrv *srv, AdminMsg_TransferUser *msg)
         abort();
     }
 
-    switch (srv->map_type) {
+    switch (srv->map_district.map_type) {
     case MapType_CharacterCreation:
         GameSrv_SendInstanceHead(srv, &conn);
         GameSrv_SendCharacterCreationStart(srv, &conn);
@@ -1217,26 +1235,67 @@ void GameSrv_HandleTransferUserCmd(GameSrv *srv, AdminMsg_TransferUser *msg)
     stbds_hmput(srv->connections, conn.token, conn);
 }
 
-void GameSrv_ProcessInternalMessages(GameSrv *srv)
+void GameSrv_ProcessCtrlEvent(GameSrv *srv, Event event)
 {
-    sys_mutex_lock(&srv->mtx);
-    AdminMsgArray messages = srv->admin_messages;
-    memset(&srv->admin_messages, 0, sizeof(srv->admin_messages));
-    sys_mutex_unlock(&srv->mtx);
+    int err;
 
-    for (size_t idx = 0; idx < messages.len; ++idx) {
-        AdminMsg *msg = &messages.ptr[idx];
-        switch (msg->cmd) {
-        case AdminCmd_Quit:
+    if ((err = CtrlConn_ProcessEvent(&srv->ctrl_conn, event)) != 0) {
+        return;
+    }
+
+    CtrlConn *conn = &srv->ctrl_conn;
+    if (!conn->connected && conn->writable) {
+        conn->connected = true;
+
+        if ((err = CtrlConn_WriteHandshake(conn)) != 0) {
+            log_error("CtrlConn_WriteHandshake failed, err: %d", err);
+            srv->quit_signaled = true;
+            return;
+        }
+
+        if ((err = CtrlConn_SendServerReady(conn, srv->server_id)) != 0) {
+            log_error("CtrlConn_SendServerReady failed, err: %d", err);
+            srv->quit_signaled = true;
+            return;
+        }
+    }
+
+    for (size_t idx = 0; idx < conn->messages.len; ++idx) {
+        CtrlMsg *msg = conn->messages.ptr[idx];
+
+        if (msg == NULL) {
+            log_info("Quit signalled by the master server");
             srv->quit_signaled = true;
             break;
-        case AdminCmd_TransferUser:
-            GameSrv_HandleTransferUserCmd(srv, &msg->transfer_user);
+        }
+
+        switch (msg->msg_id) {
+        case CtrlMsgId_None:
             break;
-        default:
+        case CtrlMsgId_TransferUser:
+            GameSrvCtrl_HandleTransferUser(srv, &msg->TransferUser);
             break;
         }
     }
+    array_clear(&conn->messages);
+}
+
+int GameSrv_UpdateCtrlConnection(GameSrv *srv)
+{
+    int err;
+    CtrlConn *conn = &srv->ctrl_conn;
+
+    int flags = IOCPF_READ;
+    if (!conn->writable) {
+        flags |= IOCPF_WRITE;
+    }
+
+    if ((err = iocp_reregister(&srv->iocp, &conn->source, flags)) != 0) {
+        log_error("Failed to re-register ctrl connection %04" PRIXPTR ", err: %d", conn->token, err);
+        return err;
+    }
+
+    return 0;
 }
 
 int GameSrv_HandleInstanceLoadRequestSpawn(GameSrv *srv, size_t player_id)
@@ -1717,6 +1776,20 @@ int GameSrv_ProcessPlayerMessage(GameSrv *srv, uint16_t player_id, GameCliMsg *m
     return err;
 }
 
+void GameSrv_Poll(GameSrv *srv)
+{
+    int err;
+
+    array_clear(&srv->events);
+    while ((err = iocp_poll(&srv->iocp, &srv->events, 16)) != 0) {
+        if (err == ERR_TIMEOUT) {
+            break;
+        }
+        log_error("Failed to run 'iocp_poll', err: %d", err);
+        abort();
+    }
+}
+
 void GameSrv_Update(GameSrv *srv)
 {
     int err;
@@ -1725,12 +1798,15 @@ void GameSrv_Update(GameSrv *srv)
     srv->current_frame_time = current_time;
     srv->current_instance_time = (uint32_t)(srv->creation_instance_time - current_time);
 
-    GameSrv_ProcessInternalMessages(srv);
     GameSrv_Poll(srv);
 
     for (size_t idx = 0; idx < srv->events.len; ++idx) {
         Event event = array_at(&srv->events, idx);
-        GameSrv_ProcessEvent(srv, event);
+        if (event.token == 0) {
+            GameSrv_ProcessCtrlEvent(srv, event);
+        } else {
+            GameSrv_ProcessGameEvent(srv, event);
+        }
         array_add(&srv->connections_with_event, event.token);
     }
 
@@ -1765,6 +1841,11 @@ void GameSrv_Update(GameSrv *srv)
         }
     }
 
+    if ((err = CtrlConn_UpdateWrite(&srv->ctrl_conn)) != 0) {
+        // @Cleanup: Should reset the connection.
+        log_error("CtrlConn_UpdateWrite failed %d", err);
+    }
+
     for (size_t idx = 0; idx < srv->connections_to_remove.len; ++idx) {
         uintptr_t token = array_at(&srv->connections_to_remove, idx);
         GameSrv_RemoveConnection(srv, token);
@@ -1772,8 +1853,14 @@ void GameSrv_Update(GameSrv *srv)
     array_clear(&srv->connections_to_remove);
 
     for (size_t idx = 0; idx < srv->connections_with_event.len; ++idx) {
-        GameConnection *conn;
         uintptr_t token = array_at(&srv->connections_with_event, idx);
+
+        if (token == 0) {
+            GameSrv_UpdateCtrlConnection(srv);
+            continue;
+        }
+
+        GameConnection *conn;
         if ((conn = GameSrv_GetConnection(srv, token)) == NULL) {
             continue;
         }
@@ -1795,7 +1882,7 @@ int GameSrv_LoadMap(GameSrv *srv)
     int err;
 
     MapId map_id;
-    if ((err = MapId_FromInt(srv->map_id, &map_id)) != 0)
+    if ((err = MapId_FromInt(srv->map_district.map_id, &map_id)) != 0)
         return err;
 
     if ((srv->map_static_config = GetMapConfigForMapId(map_id)) == NULL) {
@@ -1829,10 +1916,20 @@ cleanup:
 
 void GameSrv_ThreadEntry(void *param)
 {
+    int err;
     GameSrv *srv = (GameSrv *)param;
+
+    // We are the owner of the thread, so we free the result as soon as it exist.
+    if ((err = sys_thread_detach(&srv->thread)) != 0) {
+        log_error("Failed to detach the GameSrv thread");
+        return;
+    }
+
     while (!srv->quit_signaled) {
         GameSrv_Update(srv);
     }
+
+    log_warn("Missing a lot of freeing here!!");
 }
 
 int GameSrv_Start(GameSrv *srv)
@@ -1843,17 +1940,13 @@ int GameSrv_Start(GameSrv *srv)
         return err;
     }
 
+    if ((err = GameSrv_ConnectCtrlConn(srv)) != 0) {
+        return err;
+    }
+
     if ((err = sys_thread_create(&srv->thread, GameSrv_ThreadEntry, srv)) != 0) {
         return err;
     }
 
     return ERR_OK;
-}
-
-void GameSrv_SendAdminMsg(GameSrv *srv, AdminMsg *msg)
-{
-    sys_mutex_lock(&srv->mtx);
-    AdminMsg *dst = array_push(&srv->admin_messages, 1);
-    *dst = *msg;
-    sys_mutex_unlock(&srv->mtx);
 }

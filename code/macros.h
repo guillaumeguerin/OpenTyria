@@ -9,7 +9,7 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
-#define indexof(base, offset) (size_t)(offset - base)
+#define ARRAY_INDEX(base, offset) (size_t)(offset - base)
 
 #define ROL16(x, n) ((x << n) | ((x & 0xFFFF)     >> (16 - n)))
 #define ROL32(x, n) ((x << n) | ((x & 0xFFFFFFFF) >> (32 - n)))
@@ -19,3 +19,5 @@
 #define ALIGN32(v)  ((v + 3) & ~3)
 
 #define STATIC_ASSERT(expr) static_assert(expr, #expr)
+
+#define CONCAT(a, b) a ## b

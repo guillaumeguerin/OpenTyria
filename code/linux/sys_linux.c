@@ -101,6 +101,15 @@ int sys_set_reuseaddr(uintptr_t fd, bool enable)
     return 0;
 }
 
+int sys_connect(uintptr_t fd, const struct sockaddr *addr, int namelen)
+{
+    if (connect(fd, addr, namelen) != -1) {
+        return 0;
+    } else {
+        return errno;
+    }
+}
+
 int sys_bind(uintptr_t fd, const struct sockaddr *addr, int namelen)
 {
     if (bind((int)fd, addr, namelen) != -1) {
@@ -236,6 +245,18 @@ int sys_thread_join(Thread *thread)
 
     thread->handle = 0;
     return 0;
+}
+
+int sys_thread_detach(Thread *thread)
+{
+    if (thread->handle == 0) {
+        return ERR_UNSUCCESSFUL;
+    }
+
+    pthread_t hThread = (pthread_t) thread->handle;
+    int err = pthread_detach(hThread);
+    thread->handle = 0;
+    return err != 0 ? ERR_UNSUCCESSFUL : 0;
 }
 
 int sys_mutex_init(Mutex *mtx)

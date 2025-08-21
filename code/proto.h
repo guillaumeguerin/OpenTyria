@@ -29,3 +29,7 @@ typedef struct _GAME_CMSG_VERSION {
     uint32_t h0038;     // 0
     uint32_t h003C;     // 0
 } GAME_CMSG_VERSION;
+
+typedef struct CTRL_CMSG_VERSION {
+    uint32_t header;
+} CTRL_CMSG_VERSION;

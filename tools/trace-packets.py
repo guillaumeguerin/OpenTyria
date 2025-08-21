@@ -61,14 +61,11 @@ def main(args):
         # now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f'SendPacket: {header}, 0x{header:X}, {name}')
 
-        if header == 69:
-            x, y, unk = proc.read(packet + 4, 'ffI')
-            print(f'x = {x}, y = {y}, unk = {unk}')
-
     @Hook.rawcall
     def on_recv_packet(ctx):
         packet, = proc.read(ctx.Esp, 'I')
         header, = proc.read(packet, 'I')
+
         if header in game_smsg_names:
             name = game_smsg_names[header]
         else:
@@ -81,6 +78,14 @@ def main(args):
         print(f'RecvPacket ({ctx.Esi:X}): {header}, 0x{header:X}, {name}')
 
         """
+        if name == 'AUTH_SMSG_SESSION_INFO':
+            server_salt, unk0, unk1 = proc.read(packet + 4, 'III')
+            print(f'>> server_salt = {server_salt}, unk0 = {unk0}, unk1 = {unk1}')
+
+        if name == 'AUTH_SMSG_REQUEST_RESPONSE':
+            req_id, status = proc.read(packet + 4, 'II')
+            print(f'>> req_id = {req_id}, status = {status}')
+
         if name == 'GAME_SMSG_WINDOW_TRADER':
             tab_typ, item_type, item_amount, h00d = proc.read(packet + 4, 'IIII')
             print(f'>> tab_typ = {tab_typ}, item_type = {item_type}, item_amount = {item_amount}, h00d = {h00d}')
