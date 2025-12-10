@@ -39,6 +39,8 @@ typedef struct AuthSrv_PortalAccountLogin {
     uint8_t  session_id[16];
     uint32_t n_charname;
     uint16_t charname[20];
+    uint32_t n_type;
+    uint16_t type[32];
 } AuthSrv_PortalAccountLogin;
 
 typedef struct AuthSrv_HardwareInfo {
