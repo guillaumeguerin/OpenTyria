@@ -38,13 +38,20 @@ def main(args):
     for section in gw_pe.sections:
         if b'.text' in section.Name:
             text_section = section
-            break
+        if b'.rdata' in section.Name:
+            rdata_section = section
 
     if not text_section:
         print(f"Couldn't find '.text' section in executable '{input_path}'")
         sys.exit(1)
 
+    if not rdata_section:
+        print(f"Couldn't find '.rdata' section in executable '{input_path}'")
+        sys.exit(1)
+
     text_sec_data = text_section.get_data()
+    rdata_section_data = rdata_section.get_data()
+
     found = text_sec_data.find(b'\x8B\x45\x08\xC7\x00\x88\x00\x00\x00\xB8')
     if found < 0:
         print("Couldn't find the accessor of the Diffie-Hellman keys in text section")
@@ -59,21 +66,30 @@ def main(args):
     key_file_pos = gw_pe.get_offset_from_rva(keys_rva) + 4
 
     print('[+] Searching for the GwLoginClient skip...')
-    found = text_sec_data.find(b'\x03\xF2\x8D\x04\x3E\x3B\xC1\x76')
+    found = rdata_section_data.find(b'\x44\x00\x6C\x00\x6C\x00\x20\x00\x25\x00\x73\x00\x20\x00\x72\x00\x65\x00\x74\x00\x72\x00\x79\x00\x69\x00\x6E\x00\x67\x00\x20\x00\x69\x00\x6E\x00\x20\x00\x74\x00\x65\x00\x6D\x00\x70\x00\x00') # L"Dll %s retrying in temp"
+    if found < 0:
+        print("Couldn't find error string in .rdata");
+        sys.exit(1)
+    found = gw_pe.OPTIONAL_HEADER.ImageBase + rdata_section.VirtualAddress + found
+    pattern = struct.pack('<BIBBB', 0x68, found, 0x6A, 0x00, 0xE8)
+
+    found = text_sec_data.find(pattern)
     if found < 0:
         print("Couldn't find the jmp to patch to avoid overriding GwLoginClient.dll in text section");
         sys.exit(1)
 
-    jmp_rva = found + text_section.VirtualAddress + 0x9D
+    print('found at', hex(found + text_section.VirtualAddress))
+
+    jmp_rva = found + text_section.VirtualAddress - 0x135
     print('[+] jmp_rva is:', hex(jmp_rva))
     jmp_file_pos = gw_pe.get_offset_from_rva(jmp_rva)
 
-    jmp_target_found = text_sec_data[found:].find(b'\x83\xC4\x0C\x85\xC9\x74\x05\xE8')
+    jmp_target_found = text_sec_data[found:].find(b'\x85\xC9\x74\x05\xE8')
     if jmp_target_found < 0:
         print("Couldn't find the jmp target to avoid overriding GwLoginClient.dll in text section");
         sys.exit(1)
 
-    jmp_target_rva = found + jmp_target_found + text_section.VirtualAddress - 0x19
+    jmp_target_rva = found + jmp_target_found + text_section.VirtualAddress - 6
     print('[+] jmp_target_rva is:', hex(jmp_target_rva))
 
     print('[+] Searching for mutex patch')
@@ -87,13 +103,6 @@ def main(args):
     mutex_patch_file_pos = gw_pe.get_offset_from_rva(mutex_patch_rva)
 
     print('[+] Searching for mutex name')
-    for section in gw_pe.sections:
-        if b'.rdata' in section.Name:
-            rdata_section = section
-    if not rdata_section:
-        print(f"Couldn't find the '.rdata' section in executable '{input_path}'")
-
-    rdata_section_data = rdata_section.get_data()
     mutex_name_file_pos = rdata_section_data.find(b'AN-Mutex-Window')
     if mutex_name_file_pos < 0:
         print("Couldn't find the mutex name in .rdata")
