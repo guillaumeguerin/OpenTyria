@@ -23,6 +23,13 @@ are chosen, because it simpliefied the final solution.
 2. Use the Python script `tools/patch-gw.py` to update an executable with the
    appropriate patches.
 
+### Fix DHM params in OpenTyria
+
+1. This should be temporary, but you need to fix the `server_private` and
+   `prime_modulus` in `code/main.c`. Those values can be in `keys.txt`.
+
+### Copy Gw.dat in the root of OpenTyria
+
 ### Starting everything
 
 1. Launch the "webgate" `python tools/webgate.py`
