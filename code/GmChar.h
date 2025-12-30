@@ -1,5 +1,11 @@
 #pragma once
 
+typedef enum CharModeFlags {
+    CharModeFlags_None = 0,
+    CharModeFlags_DhuumCovenant = 1,
+    CharModeFlags_ReforgedMode = 2,
+} CharModeFlags;
+
 typedef enum Sex {
     Sex_Male,
     Sex_Female,

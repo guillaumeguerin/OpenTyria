@@ -98,6 +98,7 @@ typedef struct GameSrv_CharCreationConfirm {
     uint32_t n_name;
     uint16_t name[20];
     uint8_t  config[8];
+    uint32_t flags; // See CharModeFlags
 } GameSrv_CharCreationConfirm;
 
 typedef struct GameSrv_ChatMessage {
