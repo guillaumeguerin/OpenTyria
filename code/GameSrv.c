@@ -192,7 +192,7 @@ void GameSrv_SendInstancePlayerDataDone(GameSrv *srv, GameConnection *conn)
 
 void GameSrv_SendUnlockedPvpHeroes(GameSrv *srv, GameConnection *conn)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UNLOCKED_PVP_HEROES);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_UPDATE_UNLOCKED_HEROES);
     GameSrv_UnlockedPvpHeroes *msg = &buffer->unlocked_pvp_heroes;
     msg->n_bit_map = ARRAY_SIZE(msg->bit_map);
     for (size_t idx = 0; idx < ARRAY_SIZE(msg->bit_map); ++idx) {
@@ -600,7 +600,7 @@ void GameSrv_SendPvpItems(GameSrv *srv, GameConnection *conn)
     };
 
     for (size_t idx = 0; idx < ARRAY_SIZE(items); ++idx) {
-        GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_ITEM_ADD_UNLOCK);
+        GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_ITEM_STREAM_ADD);
         GameSrv_PvpItemAddUnlock *msg = &buffer->pvp_item_add_unlock;
         msg->item_id = items[idx].id;
         msg->n_params = items[idx].n_param;
@@ -608,7 +608,7 @@ void GameSrv_SendPvpItems(GameSrv *srv, GameConnection *conn)
         GameConnection_SendMessage(conn, buffer, sizeof(*msg));
     }
 
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_ITEM_END);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_ITEM_STREAM_END);
     GameConnection_SendMessage(conn, buffer, sizeof(buffer->header));
 }
 
@@ -638,7 +638,7 @@ void GameSrv_SendAccountFeatures(GameSrv *srv, GameConnection *conn)
 
 void GameSrv_SendPlayerHeroNameAndInfo(GameSrv *srv, GameConnection *conn)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_HERO_NAME_AND_INFO);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_UPDATE_INFO);
     GameSrv_PlayerHeroNameAndInfo *msg = &buffer->player_hero_name_and_info;
 
     msg->n_charname = 0;
@@ -654,7 +654,7 @@ void GameSrv_SendPlayerHeroNameAndInfo(GameSrv *srv, GameConnection *conn)
 
 void GameSrv_SendUpdateCurrentMap(GameSrv *srv, GameConnection *conn)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_CURRENT_MAP);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_MAP_UPDATE_CURRENT);
     GameSrv_UpdateCurrentMap *msg = &buffer->update_current_map;
     msg->map_id = srv->map_id;
     msg->unk = 0;
@@ -1688,7 +1688,7 @@ int GameSrv_ProcessPlayerMessage(GameSrv *srv, uint16_t player_id, GameCliMsg *m
     case GAME_CMSG_CHAR_CREATION_CHANGE_PROF:
         err = GameSrv_HandleCharCreationChangeProf(srv, player_id, &msg->char_creation_change_prof);
         break;
-    case GAME_CMSG_CHANGE_EQUIPPED_ITEM_COLOR:
+    case GAME_CMSG_ITEM_UPDATE_EQUIPPED_COLOR:
         err = GameSrv_HandleChangeEquippedItemColor(srv, player_id, &msg->change_equipped_item_color);
         break;
     case GAME_CMSG_CHAR_CREATION_CONFIRM:

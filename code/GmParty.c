@@ -85,7 +85,7 @@ void GameSrv_SendPartyMemberStreamEnd(GameSrv *srv, GameConnection *conn, uint16
 
 void GameSrv_SendUpdatePlayerParty(GameSrv *srv, GameConnection *conn, uint16_t party_id)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UDPATE_PLAYER_PARTY);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_UDPATE_PARTY);
     GameSrv_UpdatePlayerParty *msg = &buffer->update_player_party;
     msg->party_id = party_id;
     msg->unknown = 1;

@@ -46,26 +46,26 @@ void GameSrv_SendHardModeUnlocked(GameSrv *srv, GameConnection *conn)
 
 void GameSrv_SendPlayerMaxFactions(GameSrv *srv, GameConnection *conn, GmPlayer *player)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_FACTION_MAX_KURZICK);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_FACTION_MAX_KURZICK);
     buffer->kurzick_max.max_faction = player->account.kurzick_points_max;
     GameConnection_SendMessage(conn, buffer, sizeof(buffer->kurzick_max));
 
-    buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_FACTION_MAX_LUXON);
+    buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_FACTION_MAX_LUXON);
     buffer->luxon_max.max_faction = player->account.luxon_points_max;
     GameConnection_SendMessage(conn, buffer, sizeof(buffer->luxon_max));
 
-    buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_FACTION_MAX_BALTHAZAR);
+    buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_FACTION_MAX_BALTHAZAR);
     buffer->balthazar_max.max_faction = player->account.balthazar_points_max;
     GameConnection_SendMessage(conn, buffer, sizeof(buffer->balthazar_max));
 
-    buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_FACTION_MAX_IMPERIAL);
+    buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_FACTION_MAX_IMPERIAL);
     buffer->imperial_max.max_faction = player->account.imperial_points_max;
     GameConnection_SendMessage(conn, buffer, sizeof(buffer->imperial_max));
 }
 
 void GameSrv_SendPlayerFactions(GameSrv *srv, GameConnection *conn, GmPlayer *player)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UPDATE_FACTIONS);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_UPDATE_FACTIONS);
     GameSrv_UpdatePlayerFactions *msg = &buffer->update_player_factions;
     msg->experience = player->character.experience;
     msg->current_kurzick = player->account.kurzick_points_amount;
@@ -119,7 +119,7 @@ void GameSrv_SendPlayerProfession(GameSrv *srv, GameConnection *conn, GmPlayer *
 
 void GameSrv_SendUnlockedProfessions(GameSrv *srv, GameConnection *conn, GmPlayer *player)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UNLOCKED_PROFESSION);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UPDATE_UNLOCKED_PROFESSIONS);
     GameSrv_UnlockedProfession *msg = &buffer->unlocked_profession;
     msg->agent_id = player->agent_id;
     msg->unlocked = player->character.unlocked_professions;
@@ -156,7 +156,7 @@ void GameSrv_SendSkillsAndAttributes(GameSrv *srv, GameConnection *conn, GmPlaye
 void GameSrv_SendPlayerHealthEnergy(GameSrv *srv, GameConnection *conn, GmPlayer *player)
 {
     {
-        GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_AGENT_INT_PROPERTY);
+        GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_AGENT_PROPERTY_UPDATE_INT);
         GameSrv_UpdateAgentIntProperty *msg = &buffer->update_agent_int_property;
         msg->agent_id = player->agent_id;
         msg->prop_id = AgentProperty_Energy;
@@ -171,7 +171,7 @@ void GameSrv_SendPlayerHealthEnergy(GameSrv *srv, GameConnection *conn, GmPlayer
     }
 
     {
-        GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_AGENT_FLOAT_PROPERTY);
+        GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_AGENT_PROPERTY_UPDATE_FLOAT);
         GameSrv_UpdateAgentFloatProperty *msg = &buffer->update_agent_float_property;
         msg->agent_id = player->agent_id;
         msg->prop_id = AgentProperty_EnergyRegen;
@@ -184,7 +184,7 @@ void GameSrv_SendUnlockedMaps(GameSrv *srv, GameConnection *conn, GmPlayer *play
 {
     DbCharacter *ch = &player->character;
 
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UNLOCKED_MAPS);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_MAP_UPDATE_UNLOCKED_LIST);
     GameSrv_UnlockedMaps *msg = &buffer->unlocked_maps;
 
     STATIC_ASSERT(sizeof(msg->completed_missions_nm_buf) <= sizeof(ch->completed_missions_nm.buf));
@@ -214,7 +214,7 @@ void GameSrv_SendUpdatePvpUnlockedSkills(GameSrv *srv, GameConnection *conn, GmP
 {
     DbCharacter *ch = &player->character;
 
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_PVP_UNLOCKED_SKILLS);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_UPDATE_UNLOCKED_SKILLS);
     GameSrv_UpdatePvpUnlockedSkills *msg = &buffer->update_pvp_unlocked_skills;
 
     STATIC_ASSERT(sizeof(msg->unlocked_skills_buf) <= sizeof(ch->unlocked_skills.buf));
@@ -231,7 +231,7 @@ void GameSrv_SendUpdatePveUnlockedSkills(GameSrv *srv, GameConnection *conn, GmP
 {
     DbCharacter *ch = &player->character;
 
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_PVE_UNLOCKED_SKILLS);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_UNLOCKED_SKILLS);
     GameSrv_UpdatePveUnlockedSkills *msg = &buffer->update_pve_unlocked_skills;
 
     STATIC_ASSERT(sizeof(msg->unlocked_skills_buf) <= sizeof(ch->unlocked_skills.buf));
@@ -265,7 +265,7 @@ GameSrvMsg* GameSrv_BuildUpdatePlayerInfo(GameSrv *srv, GmPlayer *player, size_t
     appearance.hair_style = player->character.hair_style;
     appearance.race = player->character.race;
 
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_PLAYER_INFO);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UPDATE_AGENT_INFO);
     GameSrv_UpdatePlayerInfo *msg = &buffer->update_player_info;
     msg->player_id = player->player_id;
     msg->agent_id = player->agent_id;
@@ -296,7 +296,7 @@ void GameSrv_BroadcastUpdatePlayerInfo(GameSrv *srv, GmPlayer *player)
 
 GameSrvMsg* GameSrv_BuildUpdatePlayerPartySize(GameSrv *srv, GmPlayer *player, size_t *size)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_PLAYER_PARTY_SIZE);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UPDATE_PARTY_SIZE);
     GameSrv_UpdatePlayerPartySize *msg = &buffer->update_player_party_size;
     msg->player_id = player->player_id;
     msg->party_size = 1;
@@ -320,7 +320,7 @@ void GameSrv_BroadcastUpdatePlayerPartySize(GameSrv *srv, GmPlayer *player)
 
 GameSrvMsg* GameSrv_BuildAddPlayerToPlayerParty(GameSrv *srv, GmPlayer *player, size_t *size)
 {
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_ADD_PLAYER_TO_PLAYER_PARTY);
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UPDATE_PARTY);
     GameSrv_AddPlayerToPlayerParty *msg = &buffer->add_player_to_player_party;
     // @Cleanup:
     // When a player isn't in any party, we add this player to it's own party.
