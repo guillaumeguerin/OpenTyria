@@ -1,5 +1,6 @@
 import sys
 import argparse
+import signal
 import struct
 
 from process import *
@@ -46,8 +47,9 @@ def main(args):
 
     running = True
     def signal_handler(sig, frame):
-        global running
+        nonlocal running
         running = False
+    signal.signal(signal.SIGINT, signal_handler)
 
     @Hook.stdcall(LPVOID, DWORD, LPVOID)
     def on_send_packet(ctx, size, packet):
