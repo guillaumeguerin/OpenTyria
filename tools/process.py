@@ -183,6 +183,7 @@ _RIP_EVENT                          = 9
 
 _DBG_CONTINUE                       = 0x00010002
 _DBG_EXCEPTION_NOT_HANDLED          = 0x80010001
+_DBG_TRAP_FLAGS                     = 0x100
 
 # Make kernel32 independant of windll which may be unpredictable.
 _kernel32 = ctypes.WinDLL('kernel32.dll')
@@ -712,22 +713,18 @@ class ProcessHook(object):
         self.inst = proc.read(addr, 's')[0]
         self.enabled = False
 
-    def __del__(self):
-        if self.enabled:
-            self.disable()
-
     def __repr__(self):
         return '<ProcessHook %08X in Process %d>' % (self.addr, self.proc.id)
 
     def enable(self):
         self.enabled = True
         self.proc.write(self.addr, b'\xCC')
-        self.proc.flush(self.addr, 1)
+        self.proc.flush(None, 0)
 
     def disable(self):
         self.enabled = False
         self.proc.write(self.addr, self.inst)
-        self.proc.flush(self.addr, 1)
+        self.proc.flush(None, 0)
 
 class ProcessDebugger(object):
     """
@@ -735,6 +732,7 @@ class ProcessDebugger(object):
     def __init__(self, proc):
         self.proc = proc
         self.is32bit = self.proc.is32bit();
+        self.exiting = False
         _DebugSetProcessKillOnExit(False)
 
     def __enter__(self):
@@ -745,16 +743,26 @@ class ProcessDebugger(object):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        l = len(self.breakpoints.values());
-        # First we disable all the hooks which will restore the original
-        # instructions.
+        self.exiting = True
+
+        threads = self.proc.threads
+        for thread in threads:
+            thread.suspend()
+
         for breakpoint in self.breakpoints.values():
             breakpoint.disable()
-        self.breakpoints = {}
+
+        for thread in threads:
+            ctx = thread.context()
+            ctx.EFlags &= ~_DBG_TRAP_FLAGS
+            thread.set_context(ctx)
+            thread.resume()
 
         # Before stopping to debug the remote process we need to process all
         # debug events, because otherwise we might crash the remote process.
-        self.poll(32)
+        self.poll(50)
+
+        self.breakpoints = {}
         _DebugActiveProcessStop(self.proc.id)
 
     def __repr__(self):
@@ -779,26 +787,22 @@ class ProcessDebugger(object):
         while _WaitForDebugEvent(byref(evt), timeout):
             if evt.dwProcessId != self.proc.id:
                 _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, _DBG_EXCEPTION_NOT_HANDLED)
-                return
-
-            if evt.dwDebugEventCode == _EXIT_PROCESS_DEBUG_EVENT:
+            elif evt.dwDebugEventCode == _EXIT_PROCESS_DEBUG_EVENT:
                 # This mostly avoid exceptions when exiting the Python process,
                 # because we can't restore breakpoints in a non-existent process.
                 for breakpoint in self.breakpoints.values():
                     breakpoint.disable()
                 self.breakpoints = {}
                 _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, _DBG_CONTINUE)
-
-            if evt.dwDebugEventCode != _EXCEPTION_DEBUG_EVENT:
+            elif evt.dwDebugEventCode == _EXCEPTION_DEBUG_EVENT:
+                continue_status = _DBG_CONTINUE
+                try:
+                    thread = ProcessThread(evt.dwThreadId, self.proc)
+                    continue_status = self._on_debug_event(thread, evt.u.Exception)
+                finally:
+                    _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, continue_status)
+            else:
                 _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, _DBG_EXCEPTION_NOT_HANDLED)
-                return
-
-            continue_status = _DBG_CONTINUE
-            try:
-                thread = ProcessThread(evt.dwThreadId, self.proc)
-                continue_status = self._on_debug_event(thread, evt.u.Exception)
-            finally:
-                _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, continue_status)
 
     def _on_single_step(self, thread, addr):
         # The single step is done on a int3 which is a single bytes. This mean
@@ -811,11 +815,11 @@ class ProcessDebugger(object):
             breakpoint.enable()
         return _DBG_CONTINUE
 
-    def _on_breakpoint32(self, thread, proc_hook):
+    def _on_breakpoint32(self, thread, breakpoint):
         ctx = thread.context32()
 
         args = list()
-        hook = proc_hook.hook
+        hook = breakpoint.hook
         conv = hook.callconv
 
         if conv == Hook._rawcall:
@@ -838,7 +842,8 @@ class ProcessDebugger(object):
             hook(*args)
         finally:
             ctx.Eip -= 1
-            ctx.EFlags |= 0x100 # TRAP_FLAG
+            if not self.exiting:
+                ctx.EFlags |= _DBG_TRAP_FLAGS
             thread.set_context(ctx)
         return _DBG_CONTINUE
 
@@ -868,7 +873,8 @@ class ProcessDebugger(object):
             hook(*args)
         finally:
             ctx.Rip -= 1
-            ctx.EFlags |= 0x100 # TRAP_FLAG
+            if not self.exiting:
+                ctx.EFlags |= _DBG_TRAP_FLAGS
             thread.set_context(ctx)
         return _DBG_CONTINUE
 
@@ -978,11 +984,11 @@ class Process(object):
             raise Win32Exception()
         return struct.unpack(format, buffer)
 
-    def mmap(self, size, addr = None):
+    def mmap(self, size):
         """Allocates memory from the unmanaged memory of the process by using the specified number of bytes."""
         right = 0x40 # PAGE_EXECUTE_READWRITE
         flags = 0x1000 | 0x2000 # MEM_COMMIT | MEM_RESERVE
-        memory = _VirtualAllocEx(self.handle, addr, size, flags, right)
+        memory = _VirtualAllocEx(self.handle, None, size, flags, right)
         if not memory:
             raise Win32Exception()
         return memory
@@ -1052,13 +1058,16 @@ class Process(object):
         _VirtualQueryEx(self.handle, addr, byref(buffer), sizeof(buffer))
         return buffer.RegionSize, buffer.Protect
 
-    def spawn_thread(self, entry, param = None):
+    def spawn_thread(self, entry, param=None, suspended=False):
         """Spawns a thread in a suspended state and returns his ProcessThread."""
+        flags = 0
+        if suspended:
+            flags |= 4
         id = DWORD()
-        handle = _CreateRemoteThread(self.handle, 0, 0, entry, param, 4, byref(id))
+        handle = _CreateRemoteThread(self.handle, 0, 0, entry, param, flags, byref(id))
         if not handle:
             raise Win32Exception()
-        return ProcessThread(id, self, handle)
+        return ProcessThread(id.value, self, handle)
 
     def is32bit(self):
         wow64 = BOOL()
