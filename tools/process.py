@@ -33,7 +33,6 @@ import sys
 import ctypes
 import struct
 import functools
-import traceback
 
 BOOL        = ctypes.c_long
 BYTE        = ctypes.c_byte
@@ -673,10 +672,7 @@ class Hook(object):
         return hook
 
     def __call__(self, *args, **kw):
-        try:
-            return self.callback(*self.extargs, *args, **kw)
-        except:
-            print(traceback.format_exc())
+        return self.callback(*self.extargs, *args, **kw)
 
     def clone(self):
         return Hook(self.callback, self.callconv, self.argtypes)
@@ -909,10 +905,8 @@ class ProcessDebugger(object):
             return _DBG_EXCEPTION_NOT_HANDLED
         addr = info.ExceptionAddress
         if code == _EXCEPTION_SINGLE_STEP:
-            ctx = thread.context32()
             return self._on_single_step(thread, addr)
         if code == _EXCEPTION_BREAKPOINT:
-            ctx = thread.context32()
             return self._on_breakpoint(thread, addr)
         return _DBG_EXCEPTION_NOT_HANDLED
 
