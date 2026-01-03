@@ -203,6 +203,10 @@ def main(args):
             agent_id, primary_profession, secondary_profession, is_pvp = proc.read(packet + 4, 'IIII')
             print(f'>> agent_id = {agent_id}, primary_profession = {primary_profession}, secondary_profession = {secondary_profession}, is_pvp = {is_pvp}')
 
+        if name == 'GAME_SMSG_AGENT_UPDATE_PROFESSION':
+            agent_id, primary_profession, secondary_profession = proc.read(packet + 4, 'III')
+            print(f'>> agent_id = {agent_id}, primary_profession = {primary_profession}, secondary_profession = {secondary_profession}')
+
         if name == 'GAME_SMSG_UPDATE_AGENT_VISUAL_EQUIPMENT':
             agent_id, weapon_item_id, offhand_item_id, body_item_id, boots_item_id, legs_item_id, gloves_item_id, head_item_id, costume_head_item_id, costume_body_item_id = proc.read(packet + 4, 'IIIIIIIIII')
             print(f'>> agent_id = {agent_id}, weapon_item_id = {weapon_item_id}, offhand_item_id = {offhand_item_id}, body_item_id = {body_item_id}, boots_item_id = {boots_item_id}, legs_item_id = {legs_item_id}, gloves_item_id = {gloves_item_id}, head_item_id = {head_item_id}, costume_head_item_id = {costume_head_item_id}, costume_body_item_id = {costume_body_item_id}')
