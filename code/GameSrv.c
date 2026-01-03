@@ -636,7 +636,7 @@ void GameSrv_SendAccountFeatures(GameSrv *srv, GameConnection *conn)
     }
 }
 
-void GameSrv_SendPlayerHeroNameAndInfo(GameSrv *srv, GameConnection *conn)
+void GameSrv_SendCharacterInfo(GameSrv *srv, GameConnection *conn)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHARACTER_UPDATE_INFO);
     GameSrv_PlayerHeroNameAndInfo *msg = &buffer->player_hero_name_and_info;
@@ -652,7 +652,7 @@ void GameSrv_SendPlayerHeroNameAndInfo(GameSrv *srv, GameConnection *conn)
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
 
-void GameSrv_SendUpdateCurrentMap(GameSrv *srv, GameConnection *conn)
+void GameSrv_SendCurrentMap(GameSrv *srv, GameConnection *conn)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_MAP_UPDATE_CURRENT);
     GameSrv_UpdateCurrentMap *msg = &buffer->update_current_map;
@@ -1324,7 +1324,7 @@ int GameSrv_HandleInstanceLoadRequestPlayers(GameSrv *srv, size_t player_id, Gam
     GameSrv_BroadcastPlayerEquippedItems(srv, player);
     GameSrv_BroadcastUpdateAgentVisualEquipment(srv, agent, &player->bags);
     GameSrv_BroadcastAgentDisplayCape(srv, agent);
-    GameSrv_SendUpdatePlayerAgent(srv, conn, agent);
+    GameSrv_SendUpdateControlledAgent(srv, conn, agent);
     GameSrv_SendPlayerParty(srv, conn, player->party_id);
     GameSrv_SendUpdatePlayerParty(srv, conn, player->party_id);
 
@@ -1356,8 +1356,8 @@ int GameSrv_HandleInstanceLoadRequestItems(GameSrv *srv, size_t player_id, GameS
     // GameSrv_SendQuests(conn);
     GameSrv_SendPlayerMaxFactions(srv, conn, player);
     GameSrv_SendHardModeUnlocked(srv, conn);
-    GameSrv_SendPlayerHeroNameAndInfo(srv, conn);
-    GameSrv_SendUpdateCurrentMap(srv, conn);
+    GameSrv_SendCharacterInfo(srv, conn);
+    GameSrv_SendCurrentMap(srv, conn);
     GameSrv_SendReadyForMapSpawn(srv, conn);
     GameSrv_SendDownloadManifest(srv, conn);
 

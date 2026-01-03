@@ -232,7 +232,7 @@ void GameSrv_BroadcastUpdateAgentVisualEquipment(GameSrv *srv, GmAgent *agent, G
     GameSrv_BroadcastMessage(srv, buffer, size);
 }
 
-void GameSrv_SendUpdatePlayerAgent(GameSrv *srv, GameConnection *conn, GmAgent *agent)
+void GameSrv_SendUpdateControlledAgent(GameSrv *srv, GameConnection *conn, GmAgent *agent)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_WORLD_UPDATE_CONTROLLED_AGENT);
     GameSrv_UpdatePlayerAgent *msg = &buffer->update_player_agent;
@@ -374,7 +374,7 @@ void GameSrv_WorldTick(GameSrv *srv)
     srv->last_world_tick = srv->current_frame_time;
 }
 
-void GameSrv_BroadcastMoveAgentToPoint(GameSrv *srv, GmAgent *agent)
+void GameSrv_BroadcastAgentMoveToPoint(GameSrv *srv, GmAgent *agent)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_AGENT_MOVE_TO_POINT);
     GameSrv_MoveAgentToPoint *msg = &buffer->move_agent_to_point;
@@ -407,7 +407,7 @@ int GameSrv_HandleMoveToCoord(GameSrv *srv, uint16_t player_id, GameSrv_MoveToCo
     agent->direction.y = dy / norm;
     agent->rotation = atan2f(agent->direction.y, agent->direction.x);
 
-    GameSrv_BroadcastMoveAgentToPoint(srv, agent);
+    GameSrv_BroadcastAgentMoveToPoint(srv, agent);
     return ERR_OK;
 }
 

@@ -52,7 +52,7 @@ GameSrvMsg* GameSrv_BuildAgentInitialEffectsMsg(GameSrv *srv, GmAgent *agent, si
 void GameSrv_SendAgentInitialEffects(GameSrv *srv, GameConnection *conn, GmAgent *agent);
 void GameSrv_BroadcastAgentInitialEffects(GameSrv *srv, GmAgent *agent);
 void GameSrv_BroadcastUpdateAgentVisualEquipment(GameSrv *srv, GmAgent *agent, GmBagArray *bags);
-void GameSrv_SendUpdatePlayerAgent(GameSrv *srv, GameConnection *conn, GmAgent *agent);
+void GameSrv_SendUpdateControlledAgent(GameSrv *srv, GameConnection *conn, GmAgent *agent);
 void GameSrv_BroadcastAgentPosition(GameSrv *srv, GmAgent *agent);
 void GameSrv_BroadcastWorldSimulationTick(GameSrv *srv, uint32_t delta_ms);
 void GameSrv_BroadcastAgentStopMoving(GameSrv *srv, uint32_t agent_id);
