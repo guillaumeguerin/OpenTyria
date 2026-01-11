@@ -1289,6 +1289,10 @@ int GameSrv_UpdateCtrlConnection(GameSrv *srv)
     int err;
     CtrlConn *conn = &srv->ctrl_conn;
 
+    if (conn->source.socket == 0) {
+        return 0;
+    }
+
     int flags = IOCPF_READ;
     if (!conn->writable) {
         flags |= IOCPF_WRITE;
