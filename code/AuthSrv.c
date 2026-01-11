@@ -379,7 +379,7 @@ ConnectedAccountInfo* AuthSrv_AddConnectedAccount(AuthSrv *srv, GmUuid account_i
     return &srv->connected_accounts[stbds_temp(srv->connected_accounts - 1)];
 }
 
-void AuthSrv_FreeAuthConnectionByToken(AuthSrv *srv, uintptr_t token)
+void AuthSrv_KillAuthConnectionByToken(AuthSrv *srv, uintptr_t token)
 {
     IoObject *object;
     if ((object = AuthSrv_GetObject(srv, token)) == NULL) {
@@ -388,14 +388,13 @@ void AuthSrv_FreeAuthConnectionByToken(AuthSrv *srv, uintptr_t token)
 
     switch (object->type) {
     case IoObjectType_AuthConnection:
-        IoSource_reset(&object->auth_connection.source);
-        array_clear(&object->auth_connection.outgoing);
+        AuthConnection_Free(&object->auth_connection);
+        *object = (IoObject){0};
         array_add(&srv->objects_to_remove, token);
         break;
     case IoObjectType_CtrlConnection:
-        IoSource_reset(&object->ctrl_connection.source);
-        array_clear(&object->ctrl_connection.outgoing);
-        array_add(&srv->objects_to_remove, token);
+        CtrlConn_Free(&object->ctrl_connection);
+        *object = (IoObject){0};
         break;
     default:
         abort();
@@ -407,16 +406,7 @@ void AuthSrv_CloseAuthConnection(AuthSrv *srv, AuthConnection *conn)
     IoSource_reset(&conn->source);
     array_clear(&conn->outgoing);
     array_add(&srv->objects_to_remove, conn->token);
-
-    ConnectedAccountInfo *connected;
-    if ((connected = AuthSrv_GetConnectedAccount(srv, conn->account_id)) == NULL) {
-        return;
-    }
-
-    connected->auth_conn_token = 0;
-    if (connected->current_server_id == 0) {
-        AuthSrv_DelConnectedAccount(srv, conn->account_id);
-    }
+    AuthSrv_DelConnectedAccount(srv, conn->account_id);
 }
 
 void AuthSrv_CloseCtrlConnection(AuthSrv *srv, CtrlConn *conn)
@@ -622,7 +612,8 @@ int AuthSrv_HandlePortalAccountLogin(AuthSrv *srv, AuthConnection *conn, AuthCli
 
     ConnectedAccountInfo *connected_account;
     if ((connected_account = AuthSrv_GetConnectedAccount(srv, session.account_id)) != NULL) {
-        AuthSrv_FreeAuthConnectionByToken(srv, connected_account->auth_conn_token);
+        log_info("There was already a connection connected to the account, closing it");
+        AuthSrv_KillAuthConnectionByToken(srv, connected_account->auth_conn_token);
         connected_account->auth_conn_token = conn->token;
     } else {
         connected_account = AuthSrv_AddConnectedAccount(srv, session.account_id);
