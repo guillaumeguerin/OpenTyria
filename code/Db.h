@@ -14,6 +14,7 @@ typedef struct Database {
     sqlite3_stmt *stmt_create_bag;
     sqlite3_stmt *stmt_create_item;
     sqlite3_stmt *stmt_select_character_items;
+    sqlite3_stmt *stmt_update_last_played_character;
 } Database;
 
 int Db_Open(Database *result, const char *path);
@@ -35,3 +36,4 @@ int Db_CreateBag(Database *database, DbBag *bag);
 int Db_CreateBags(Database *database, DbBag *bags, size_t count);
 int Db_CreateItem(Database *database, DbItem *item);
 int Db_CreateItems(Database *database, DbItem *items, size_t count);
+int Db_UpdateLastPlayedCharacter(Database *database, GmUuid account_id, GmUuid char_id);

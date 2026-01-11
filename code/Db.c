@@ -362,6 +362,12 @@ int Db_Open(Database *result, const char *path)
         goto exit_on_error;
     }
 
+    array_clear(&builder);
+    appendf(&builder, "UPDATE %s SET %s = ? WHERE %s = ?;", "accounts", DbAccountColsName[DbAccountCols_current_char_id]);
+    if ((err = sqlite3_prepare_v2(conn, builder.ptr, (int)builder.len, &result->stmt_update_last_played_character, 0)) != SQLITE_OK) {
+        goto exit_on_error;
+    }
+
     return ERR_OK;
 exit_on_error:
     log_error(
@@ -424,6 +430,10 @@ void Db_Close(Database *database)
     }
 
     if ((err = sqlite3_finalize(database->stmt_select_character_items)) != SQLITE_OK) {
+        log_error("Failed to finalize 'stmt_select_character_items', err: %d (%s)", err, sqlite3_errstr(err));
+    }
+
+    if ((err = sqlite3_finalize(database->stmt_update_last_played_character)) != SQLITE_OK) {
         log_error("Failed to finalize 'stmt_select_character_items', err: %d (%s)", err, sqlite3_errstr(err));
     }
 
@@ -936,6 +946,30 @@ int Db_GetItems(Database *database, GmUuid account_id, GmUuid char_id, DbItemArr
     }
 
     if (err != SQLITE_DONE) {
+        log_warn("Query failed, err: %d (%s)", err, sqlite3_errstr(err));
+        return_close(ERR_UNSUCCESSFUL, stmt);
+    }
+
+    return_close(ERR_OK, stmt);
+}
+
+int Db_UpdateLastPlayedCharacter(Database *database, GmUuid account_id, GmUuid char_id)
+{
+    int err;
+
+    sqlite3_stmt *stmt = database->stmt_update_last_played_character;
+    if ((err = sqlite3_bind_uuid(stmt, 1, char_id)) != SQLITE_OK ||
+        (err = sqlite3_bind_uuid(stmt, 2, account_id)) != SQLITE_OK)
+    {
+        log_error(
+            "Failed to bind values to a statement, err: %d (%s)",
+            err,
+            sqlite3_errstr(err)
+        );
+        return_close(ERR_SERVER_ERROR, stmt);
+    }
+
+    if ((err = sqlite3_step(stmt)) != SQLITE_DONE) {
         log_warn("Query failed, err: %d (%s)", err, sqlite3_errstr(err));
         return_close(ERR_UNSUCCESSFUL, stmt);
     }

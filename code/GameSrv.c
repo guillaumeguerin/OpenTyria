@@ -1199,6 +1199,10 @@ void GameSrvCtrl_HandleTransferUser(GameSrv *srv, CtrlMsg_TransferUser *msg)
         log_error("Failed to register a transfered user");
     }
 
+    if ((err = Db_UpdateLastPlayedCharacter(&srv->database, msg->account_id, msg->char_id)) != 0) {
+        log_error("Failed to update the last played character in db");
+    }
+
     if (!msg->reconnection) {
         GmPlayer *player = GameSrv_CreatePlayer(srv, msg->token, msg->account_id, msg->char_id);
         conn.player_id = player->player_id;
