@@ -1,12 +1,12 @@
 #pragma once
 
-int CtrlConn_Setup(CtrlConn *conn)
+int CtrlConn_Setup(CtrlConnection *conn)
 {
     UNREFERENCED_PARAMETER(conn);
     return 0;
 }
 
-void CtrlConn_Free(CtrlConn *conn)
+void CtrlConn_Free(CtrlConnection *conn)
 {
     IoSource_reset(&conn->source);
     array_free(&conn->incoming);
@@ -15,7 +15,7 @@ void CtrlConn_Free(CtrlConn *conn)
     memset(conn, 0, sizeof(*conn));
 }
 
-int CtrlConn_FlushOutgoingBuffer(CtrlConn *conn)
+int CtrlConn_FlushOutgoingBuffer(CtrlConnection *conn)
 {
     int err;
     size_t bytes_sent;
@@ -39,7 +39,7 @@ int CtrlConn_FlushOutgoingBuffer(CtrlConn *conn)
     return ERR_OK;
 }
 
-int CtrlConn_UpdateWrite(CtrlConn *conn)
+int CtrlConn_UpdateWrite(CtrlConnection *conn)
 {
     int err = 0;
     if (conn->writable && conn->outgoing.len) {
@@ -59,7 +59,7 @@ size_t CtrlConn_SizeOf(CtrlMsgId msg_id)
     }
 }
 
-int CtrlConn_WriteMessage(CtrlConn *conn, CtrlMsg *msg, size_t size)
+int CtrlConn_WriteMessage(CtrlConnection *conn, CtrlMsg *msg, size_t size)
 {
     assert(CtrlConn_SizeOf(msg->msg_id) == size);
 
@@ -72,7 +72,7 @@ int CtrlConn_WriteMessage(CtrlConn *conn, CtrlMsg *msg, size_t size)
     return ERR_OK;
 }
 
-int CtrlConn_GetMessages(CtrlConn *conn)
+int CtrlConn_GetMessages(CtrlConnection *conn)
 {
     uint16_t header;
     size_t total_consumed = 0;
@@ -102,7 +102,7 @@ int CtrlConn_GetMessages(CtrlConn *conn)
     return 0;
 }
 
-void CtrlConn_CtrlPeerDisconnected(CtrlConn *conn)
+void CtrlConn_CtrlPeerDisconnected(CtrlConnection *conn)
 {
     int err;
 
@@ -122,7 +122,7 @@ void CtrlConn_CtrlPeerDisconnected(CtrlConn *conn)
     array_clear(&conn->outgoing);
 }
 
-int CtrlConn_ProcessEvent(CtrlConn *conn, Event event)
+int CtrlConn_ProcessEvent(CtrlConnection *conn, Event event)
 {
     int err;
 
@@ -171,7 +171,7 @@ int CtrlConn_ProcessEvent(CtrlConn *conn, Event event)
     return 0;
 }
 
-int CtrlConn_WriteHandshake(CtrlConn *conn)
+int CtrlConn_WriteHandshake(CtrlConnection *conn)
 {
     CTRL_CMSG_VERSION version = {0};
     version.header = CTRL_CMSG_VERSION_HEADER;
@@ -185,14 +185,14 @@ int CtrlConn_WriteHandshake(CtrlConn *conn)
     return 0;
 }
 
-int CtrlConn_SendServerReady(CtrlConn *conn, uint32_t server_id)
+int CtrlConn_SendServerReady(CtrlConnection *conn, uint32_t server_id)
 {
     CtrlMsg msg = { CtrlMsgId_ServerReady };
     msg.ServerReady.server_id = server_id;
     return CtrlConn_WriteMessage(conn, &msg, sizeof(msg.ServerReady));
 }
 
-int CtrlConn_SendPlayerLeft(CtrlConn *conn)
+int CtrlConn_SendPlayerLeft(CtrlConnection *conn)
 {
     CtrlMsg msg = { CtrlMsgId_PlayerLeft };
     return CtrlConn_WriteMessage(conn, &msg, sizeof(msg.PlayerLeft));

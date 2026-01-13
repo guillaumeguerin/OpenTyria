@@ -67,7 +67,7 @@ int AuthSrvCtrl_CreateServer(AuthSrv *srv, GameSrvDistrict district, size_t *idx
     return 0;
 }
 
-int AuthSrvCtrl_ProcessServerReady(AuthSrv *srv, CtrlConn *conn, CtrlMsg *msg)
+int AuthSrvCtrl_ProcessServerReady(AuthSrv *srv, CtrlConnection *conn, CtrlMsg *msg)
 {
     assert(msg->msg_id == CtrlMsgId_ServerReady);
 

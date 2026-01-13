@@ -87,7 +87,7 @@ typedef struct IoObject {
         IoSource       listener;
         Connection     connection;
         AuthConnection auth_connection;
-        CtrlConn       ctrl_connection;
+        CtrlConnection ctrl_connection;
     };
 } IoObject;
 

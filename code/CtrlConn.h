@@ -43,7 +43,7 @@ typedef union CtrlMsg {
 } CtrlMsg;
 typedef array(CtrlMsg *) CtrlMsgArray;
 
-typedef struct CtrlConn {
+typedef struct CtrlConnection {
     uintptr_t     token;
     IoSource      source;
     SocketAddr    peer_addr;
@@ -53,16 +53,16 @@ typedef struct CtrlConn {
     bool          connected;
     CtrlMsgArray  messages;
     uint32_t      server_id;
-} CtrlConn;
+} CtrlConnection;
 
-int  CtrlConn_Setup(CtrlConn *conn);
-void CtrlConn_Free(CtrlConn *conn);
-int  CtrlConn_FlushOutgoingBuffer(CtrlConn *conn);
-int  CtrlConn_WriteMessage(CtrlConn *conn, CtrlMsg *msg, size_t size);
-int  CtrlConn_GetMessages(CtrlConn *conn);
-int  CtrlConn_ProcessEvent(CtrlConn *conn, Event event);
+int  CtrlConn_Setup(CtrlConnection *conn);
+void CtrlConn_Free(CtrlConnection *conn);
+int  CtrlConn_FlushOutgoingBuffer(CtrlConnection *conn);
+int  CtrlConn_WriteMessage(CtrlConnection *conn, CtrlMsg *msg, size_t size);
+int  CtrlConn_GetMessages(CtrlConnection *conn);
+int  CtrlConn_ProcessEvent(CtrlConnection *conn, Event event);
 
-int  CtrlConn_UpdateWrite(CtrlConn *conn);
-int  CtrlConn_WriteHandshake(CtrlConn *conn);
-int  CtrlConn_SendServerReady(CtrlConn *conn, uint32_t server_id);
-int  CtrlConn_SendPlayerLeft(CtrlConn *conn);
+int  CtrlConn_UpdateWrite(CtrlConnection *conn);
+int  CtrlConn_WriteHandshake(CtrlConnection *conn);
+int  CtrlConn_SendServerReady(CtrlConnection *conn, uint32_t server_id);
+int  CtrlConn_SendPlayerLeft(CtrlConnection *conn);

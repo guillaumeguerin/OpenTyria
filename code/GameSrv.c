@@ -38,7 +38,7 @@ int GameConnection_FlushOutgoingBuffer(GameConnection *conn)
 int GameSrv_ConnectCtrlConn(GameSrv *srv)
 {
     int err;
-    CtrlConn *conn = &srv->ctrl_conn;
+    CtrlConnection *conn = &srv->ctrl_conn;
 
     uintptr_t fd;
     if (!create_nonblocking_socket(&fd, AF_INET)) {
@@ -1247,7 +1247,7 @@ void GameSrv_ProcessCtrlEvent(GameSrv *srv, Event event)
         return;
     }
 
-    CtrlConn *conn = &srv->ctrl_conn;
+    CtrlConnection *conn = &srv->ctrl_conn;
     if (!conn->connected && conn->writable) {
         conn->connected = true;
 
@@ -1287,7 +1287,7 @@ void GameSrv_ProcessCtrlEvent(GameSrv *srv, Event event)
 int GameSrv_UpdateCtrlConnection(GameSrv *srv)
 {
     int err;
-    CtrlConn *conn = &srv->ctrl_conn;
+    CtrlConnection *conn = &srv->ctrl_conn;
 
     if (conn->source.socket == 0) {
         return 0;

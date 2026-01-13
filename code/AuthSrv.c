@@ -348,7 +348,7 @@ AuthConnection *AuthSrv_GetAuthConnection(AuthSrv *srv, uintptr_t token)
     return &obj->auth_connection;
 }
 
-CtrlConn *AuthSrv_GetCtrlConn(AuthSrv *srv, uintptr_t token)
+CtrlConnection *AuthSrv_GetCtrlConn(AuthSrv *srv, uintptr_t token)
 {
     IoObject *obj = AuthSrv_GetObject(srv, token);
     if (obj == NULL || obj->type != IoObjectType_CtrlConnection) {
@@ -409,7 +409,7 @@ void AuthSrv_CloseAuthConnection(AuthSrv *srv, AuthConnection *conn)
     AuthSrv_DelConnectedAccount(srv, conn->account_id);
 }
 
-void AuthSrv_CloseCtrlConnection(AuthSrv *srv, CtrlConn *conn)
+void AuthSrv_CloseCtrlConnection(AuthSrv *srv, CtrlConnection *conn)
 {
     IoSource_reset(&conn->source);
     array_clear(&conn->outgoing);
@@ -781,7 +781,7 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         return ERR_OK;
     }
 
-    CtrlConn *ctrl_conn = AuthSrv_GetCtrlConn(srv, srv->games[idx].ctrl_conn);
+    CtrlConnection *ctrl_conn = AuthSrv_GetCtrlConn(srv, srv->games[idx].ctrl_conn);
     if (ctrl_conn == NULL) {
         log_error("Failed to find the ctrl connection");
         AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
@@ -1023,7 +1023,7 @@ void AuthSrv_DoPostHandshake(AuthSrv *srv, Connection *conn)
             return;
         }
 
-        CtrlConn *ctrl_conn;
+        CtrlConnection *ctrl_conn;
         if ((ctrl_conn = AuthSrv_GetCtrlConn(srv, metadata->ctrl_conn)) == NULL) {
             log_warn("Can't find the ctrl conn for the server %" PRIu32, connected->current_server_id);
             Connection_Free(conn);
@@ -1050,7 +1050,7 @@ void AuthSrv_DoPostHandshake(AuthSrv *srv, Connection *conn)
         stbds_hmdel(srv->objects, conn->token);
     } else if (conn->type == ConnType_Ctrl) {
         IoObject obj = { .type = IoObjectType_CtrlConnection };
-        CtrlConn *dst = &obj.ctrl_connection;
+        CtrlConnection *dst = &obj.ctrl_connection;
 
         dst->token = conn->token;
         dst->source = conn->source;
@@ -1259,7 +1259,7 @@ void AuthSrv_ProcessAuthConnectionEvent(AuthSrv *srv, AuthConnection *conn, Even
     array_clear(&conn->messages);
 }
 
-void AuthSrv_ProcessCtrlConnectionEvent(AuthSrv *srv, CtrlConn *conn, Event event)
+void AuthSrv_ProcessCtrlConnectionEvent(AuthSrv *srv, CtrlConnection *conn, Event event)
 {
     int err;
 
