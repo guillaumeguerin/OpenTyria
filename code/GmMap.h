@@ -187,3 +187,11 @@ typedef enum Region {
     Region_Swat,
     Region_DevRegion,
 } Region;
+
+typedef struct GmDistrict {
+    uint16_t         map_id;
+    DistrictRegion   region;
+    DistrictLanguage language;
+    MapType          map_type;
+    uint32_t         district_number;
+} GmDistrict;

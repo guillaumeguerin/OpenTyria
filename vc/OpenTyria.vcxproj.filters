@@ -39,6 +39,7 @@
     <ClCompile Include="..\code\CtrlConn.c" />
     <ClCompile Include="..\code\CtrlProto.c" />
     <ClCompile Include="..\code\AuthSrvCtrl.c" />
+    <ClCompile Include="..\code\iocp.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\code\array.h" />
@@ -96,6 +97,8 @@
     <ClInclude Include="..\code\GmMapDataImport.h" />
     <ClInclude Include="..\code\CtrlConn.h" />
     <ClInclude Include="..\code\CtrlProto.h" />
+    <ClInclude Include="..\code\GmAttributes.h" />
+    <ClInclude Include="..\code\GmUuid.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\code\msgdefs.info" />

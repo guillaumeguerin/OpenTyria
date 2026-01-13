@@ -108,10 +108,27 @@ typedef struct ConnectedAccountInfo {
     uintptr_t auth_conn_token;
 } ConnectedAccountInfo;
 
+typedef enum AuthTransferType {
+    AuthTransferType_None,
+    AuthTransferType_Auth,
+    AuthTransferType_Game,
+} AuthTransferType;
+
 typedef struct AuthTransfer {
-    uintptr_t conn_token;
-    uint32_t  req_id;
-    uint32_t  player_token;
+    AuthTransferType type;
+    union {
+        struct {
+            uintptr_t auth_conn_token;
+            uint32_t  req_id;
+            uint32_t  player_token;
+        } auth;
+        struct {
+            uintptr_t ctrl_conn_token;
+            uint32_t  player_id;
+            uint32_t  player_token;
+            GmUuid    char_id;
+        } game;
+    };
 } AuthTransfer;
 typedef array(AuthTransfer) AuthTransferArray;
 
@@ -122,7 +139,7 @@ typedef struct GameSrvMetadata {
         uint32_t server_id;
     };
     uintptr_t         ctrl_conn;
-    GameSrvDistrict   map_district;
+    GmDistrict        district;
     bool              ready;
     AuthTransferArray pending_transfers;
 } GameSrvMetadata;
@@ -146,4 +163,4 @@ void AuthSrv_Free(AuthSrv *srv);
 int  AuthSrv_Bind(AuthSrv *srv, const char *addr, size_t addr_len);
 void AuthSrv_Update(AuthSrv *srv);
 
-void AuthSrv_CompleteGameTransfer(AuthSrv *srv, AuthTransfer transfer, uint32_t server_id, uint32_t map_id);
+void AuthSrv_CompleteGameTransfer(AuthSrv *srv, AuthTransfer transfer, uint32_t server_id, uint16_t map_id);

@@ -236,6 +236,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Tests|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\code\iocp.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Tests|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Tests|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\code\logs.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -335,6 +343,7 @@
     <ClInclude Include="..\code\GameSrv.h" />
     <ClInclude Include="..\code\GmAgent.h" />
     <ClInclude Include="..\code\GmAgentProperties.h" />
+    <ClInclude Include="..\code\GmAttributes.h" />
     <ClInclude Include="..\code\GmChar.h" />
     <ClInclude Include="..\code\GmChat.h" />
     <ClInclude Include="..\code\GmColors.h" />
@@ -358,6 +367,7 @@
     <ClInclude Include="..\code\GmTitle.h" />
     <ClInclude Include="..\code\GmTitleConstData.h" />
     <ClInclude Include="..\code\GmTitles.h" />
+    <ClInclude Include="..\code\GmUuid.h" />
     <ClInclude Include="..\code\int.h" />
     <ClInclude Include="..\code\iocp.h" />
     <ClInclude Include="..\code\logs.h" />

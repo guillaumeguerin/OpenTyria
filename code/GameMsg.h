@@ -294,7 +294,7 @@ typedef struct GameSrv_CharCreationSuccess {
     uint16_t header;
     uint8_t  char_id[16];
     uint32_t n_name;
-    uint16_t name[16];
+    uint16_t name[20];
     uint16_t idk;
     uint32_t n_settings;
     uint8_t  settings[1024];
@@ -611,6 +611,16 @@ typedef struct GameSrv_ChatMessageServer {
     uint8_t  channel;
 } GameSrv_ChatMessageServer;
 
+typedef struct GameSrv_TransferGameServerInfo {
+    uint16_t header;
+    uint8_t  host[24];
+    uint32_t map_token;
+    int8_t   region;
+    uint16_t map_id;
+    uint8_t  is_explorable;
+    uint32_t player_token;
+} GameSrv_TransferGameServerInfo;
+
 typedef union GameCliMsg {
     uint16_t                             header;
     uint8_t                              buffer[MSG_MAX_BUFFER_SIZE];
@@ -700,5 +710,6 @@ typedef union GameSrvMsg {
     GameSrv_ChatMessageGlobal            chat_message_global;
     GameSrv_ChatMessageWhisper           chat_message_whisper;
     GameSrv_ChatMessageServer            chat_message_server;
+    GameSrv_TransferGameServerInfo       transfer_game_server_info;
 } GameSrvMsg;
 #pragma pack(pop)

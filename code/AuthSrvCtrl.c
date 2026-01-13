@@ -17,12 +17,12 @@ GameSrvMetadata* AuthSrvCtrl_GetGameSrvMetadata(AuthSrv *srv, uint32_t server_id
     return &srv->games[(size_t)idx];
 }
 
-int AuthSrvCtrl_FindCompatibleGameSrv(AuthSrv *srv, GameSrvDistrict district, size_t *result)
+int AuthSrvCtrl_FindCompatibleGameSrv(AuthSrv *srv, GmDistrict district, size_t *result)
 {
     size_t n_games = stbds_hmlen(srv->games);
     for (size_t idx = 0; idx < n_games; ++idx) {
         GameSrvMetadata *metadata = &srv->games[idx];
-        if (GameSrvDistrict_IsCompatible(metadata->map_district, district)) {
+        if (GmDistrict_IsCompatible(metadata->district, district)) {
             *result = idx;
             return ERR_OK;
         }
@@ -31,14 +31,14 @@ int AuthSrvCtrl_FindCompatibleGameSrv(AuthSrv *srv, GameSrvDistrict district, si
     return ERR_UNSUCCESSFUL;
 }
 
-int AuthSrvCtrl_CreateServer(AuthSrv *srv, GameSrvDistrict district, size_t *idx)
+int AuthSrvCtrl_CreateServer(AuthSrv *srv, GmDistrict district, size_t *idx)
 {
     uint32_t server_id;
     random_get_bytes(&srv->random, &server_id, sizeof(server_id));
 
     GameSrvMetadata *metadata = AuthSrvCtrl_AddGameSrvMetadata(srv, server_id);
-    metadata->map_district = district;
-    metadata->map_district.district_number = 1;
+    metadata->district = district;
+    metadata->district.district_number = 1;
 
     GameSrv *gm;
     if ((gm = calloc(1, sizeof(*gm))) == NULL) {
@@ -47,7 +47,7 @@ int AuthSrvCtrl_CreateServer(AuthSrv *srv, GameSrvDistrict district, size_t *idx
 
     GameSrvSetupParams params = {0};
     params.server_id = server_id;
-    params.district = metadata->map_district;
+    params.district = metadata->district;
     params.ctrl_srv_addr = srv->internal_address;
 
     int err;
@@ -67,11 +67,9 @@ int AuthSrvCtrl_CreateServer(AuthSrv *srv, GameSrvDistrict district, size_t *idx
     return 0;
 }
 
-int AuthSrvCtrl_ProcessServerReady(AuthSrv *srv, CtrlConnection *conn, CtrlMsg *msg)
+int AuthSrvCtrl_HandleServerReady(AuthSrv *srv, CtrlConnection *conn, CtrlMsg_ServerReady *msg)
 {
-    assert(msg->msg_id == CtrlMsgId_ServerReady);
-
-    conn->server_id = msg->ServerReady.server_id;
+    conn->server_id = msg->server_id;
 
     GameSrvMetadata *metadata = AuthSrvCtrl_GetGameSrvMetadata(srv, conn->server_id);
     metadata->ctrl_conn = conn->token;
@@ -83,7 +81,7 @@ int AuthSrvCtrl_ProcessServerReady(AuthSrv *srv, CtrlConnection *conn, CtrlMsg *
             srv,
             transfer,
             conn->server_id,
-            metadata->map_district.map_id);
+            metadata->district.map_id);
     }
 
     array_free(&metadata->pending_transfers);

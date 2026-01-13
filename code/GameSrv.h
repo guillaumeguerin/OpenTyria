@@ -22,15 +22,7 @@ typedef struct GamePlayerMsg {
 } GamePlayerMsg;
 typedef array(GamePlayerMsg) GamePlayerMsgArray;
 
-typedef struct GameSrvDistrict {
-    uint16_t         map_id;
-    DistrictRegion   region;
-    DistrictLanguage language;
-    MapType          map_type;
-    uint32_t         district_number;
-} GameSrvDistrict;
-
-bool GameSrvDistrict_Equal(GameSrvDistrict left, GameSrvDistrict right)
+bool GmDistrict_Equal(GmDistrict left, GmDistrict right)
 {
     assert(left.district_number != 0 && right.district_number != 0);
     return left.map_id == right.map_id &&
@@ -40,7 +32,7 @@ bool GameSrvDistrict_Equal(GameSrvDistrict left, GameSrvDistrict right)
            left.district_number == right.district_number;
 }
 
-bool GameSrvDistrict_IsCompatible(GameSrvDistrict left, GameSrvDistrict right)
+bool GmDistrict_IsCompatible(GmDistrict left, GmDistrict right)
 {
     return left.map_id == right.map_id &&
            left.region == right.region &&
@@ -50,15 +42,15 @@ bool GameSrvDistrict_IsCompatible(GameSrvDistrict left, GameSrvDistrict right)
 }
 
 typedef struct GameSrvSetupParams {
-    uint32_t        server_id;
-    GameSrvDistrict district;
-    SocketAddr      ctrl_srv_addr;
+    uint32_t   server_id;
+    GmDistrict district;
+    SocketAddr ctrl_srv_addr;
 } GameSrvSetupParams;
 
 typedef struct GameSrv {
     Thread                   thread;
     uint32_t                 server_id;
-    GameSrvDistrict          map_district;
+    GmDistrict               district;
     GmMapConfig             *map_static_config;
     Iocp                     iocp;
     Database                 database;

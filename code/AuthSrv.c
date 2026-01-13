@@ -348,7 +348,7 @@ AuthConnection *AuthSrv_GetAuthConnection(AuthSrv *srv, uintptr_t token)
     return &obj->auth_connection;
 }
 
-CtrlConnection *AuthSrv_GetCtrlConn(AuthSrv *srv, uintptr_t token)
+CtrlConnection *AuthSrv_GetCtrlConnection(AuthSrv *srv, uintptr_t token)
 {
     IoObject *obj = AuthSrv_GetObject(srv, token);
     if (obj == NULL || obj->type != IoObjectType_CtrlConnection) {
@@ -722,7 +722,7 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         return ERR_OK;
     }
 
-    GameSrvDistrict district = {0};
+    GmDistrict district = {0};
     if ((err = MapType_FromInt(&district.map_type, msg->map_type)) != 0 ||
         (err = DistrictRegion_FromInt(&district.region, msg->region)) != 0 ||
         (err = DistrictLanguage_FromInt(&district.language, msg->language)) != 0)
@@ -773,18 +773,12 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
     GameSrvMetadata *metadata = &srv->games[idx];
     if (metadata->ctrl_conn == 0) {
         AuthTransfer *transfer = array_push(&metadata->pending_transfers, 1);
-        transfer->conn_token = conn->token;
-        transfer->req_id = msg->req_id;
-        transfer->player_token = player_token;
+        transfer->type = AuthTransferType_Auth;
+        transfer->auth.auth_conn_token = conn->token;
+        transfer->auth.req_id = msg->req_id;
+        transfer->auth.player_token = player_token;
         connected->current_server_id = metadata->server_id;
         connected->current_player_id = player_token;
-        return ERR_OK;
-    }
-
-    CtrlConnection *ctrl_conn = AuthSrv_GetCtrlConn(srv, srv->games[idx].ctrl_conn);
-    if (ctrl_conn == NULL) {
-        log_error("Failed to find the ctrl connection");
-        AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
         return ERR_OK;
     }
 
@@ -795,29 +789,127 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         address,
         metadata->server_id,
         player_token,
-        metadata->map_district.map_id);
+        metadata->district.map_id);
     AuthSrv_SendRequestResponse(conn, msg->req_id, 0);
 
     return ERR_OK;
 }
 
-void AuthSrv_CompleteGameTransfer(AuthSrv *srv, AuthTransfer transfer, uint32_t server_id, uint32_t map_id)
+void AuthSrvCtrl_SendCancelPlayerTransfer(CtrlConnection *conn)
 {
-    AuthConnection *player_conn = AuthSrv_GetAuthConnection(srv, transfer.conn_token);
-    if (player_conn == NULL) {
-        log_warn("Connection %04" PRIXPTR " disconnected pending a transfer", transfer.conn_token);
-        return;
+    int err;
+
+    CtrlMsg msg = {CtrlMsgId_CancelPlayerTransfer};
+    if ((err = CtrlConn_WriteMessage(conn, &msg, sizeof(msg.CompletePlayerTransfer))) != 0) {
+        log_error("Couldn't cancel player transfer");
+    }
+}
+
+void AuthSrvCtrl_SendCompletePlayerTransfer(
+    CtrlConnection *conn,
+    uint32_t   player_id,
+    GmUuid     char_id,
+    SocketAddr address,
+    uint32_t   map_token,
+    uint32_t   player_token,
+    uint16_t   map_id)
+{
+    int err;
+
+    CtrlMsg msg = {CtrlMsgId_CompletePlayerTransfer};
+    msg.CompletePlayerTransfer.player_id = player_id;
+    msg.CompletePlayerTransfer.char_id = char_id;
+    msg.CompletePlayerTransfer.address = address;
+    msg.CompletePlayerTransfer.map_token = map_token;
+    msg.CompletePlayerTransfer.player_token = player_token;
+    msg.CompletePlayerTransfer.map_id = map_id;
+
+    if ((err = CtrlConn_WriteMessage(conn, &msg, sizeof(msg.CompletePlayerTransfer))) != 0) {
+        log_error("Couldn't complete player transfer");
+    }
+}
+
+int AuthSrvCtrl_HandlerStartPlayerTransfer(AuthSrv *srv, CtrlConnection *conn, CtrlMsg_StartPlayerTransfer *msg)
+{
+    ConnectedAccountInfo *connected;
+    if ((connected = AuthSrv_GetConnectedAccount(srv, msg->account_id)) == NULL) {
+        log_error("Account expected to be connected");
+        AuthSrvCtrl_SendCancelPlayerTransfer(conn);
+        return ERR_OK;
+    }
+
+    size_t idx;
+    if (AuthSrvCtrl_FindCompatibleGameSrv(srv, msg->district, &idx) != 0) {
+        if (AuthSrvCtrl_CreateServer(srv, msg->district, &idx) != 0) {
+            log_error("Couldn't allocate an appropriate game server");
+            AuthSrvCtrl_SendCancelPlayerTransfer(conn);
+            return ERR_OK;
+        }
+    }
+
+    uint32_t player_token = random_uint32(&srv->random);
+
+    GameSrvMetadata *metadata = &srv->games[idx];
+    if (metadata->ctrl_conn == 0) {
+        AuthTransfer *transfer = array_push(&metadata->pending_transfers, 1);
+        transfer->type = AuthTransferType_Game;
+        transfer->game.ctrl_conn_token = conn->token;
+        transfer->game.player_id = msg->player_id;
+        transfer->game.player_token = player_token;
+        transfer->game.char_id = msg->char_id;
+        return ERR_OK;
     }
 
     SocketAddr address = SocketAddr_LocalHostV4();
-    AuthSrv_SendGameServerInfo(
-        player_conn,
-        transfer.req_id,
+    AuthSrvCtrl_SendCompletePlayerTransfer(
+        conn,
+        msg->player_id,
+        msg->char_id,
         address,
-        server_id,
-        transfer.player_token,
-        map_id);
-    AuthSrv_SendRequestResponse(player_conn, transfer.req_id, 0);
+        metadata->server_id,
+        player_token,
+        metadata->district.map_id);
+
+    return ERR_OK;
+}
+
+void AuthSrv_CompleteGameTransfer(AuthSrv *srv, AuthTransfer transfer, uint32_t server_id, uint16_t map_id)
+{
+    if (transfer.type == AuthTransferType_None) {
+        log_warn("Unexpected transfer type 'AuthTransferType_None'");
+    } else if (transfer.type == AuthTransferType_Auth) {
+        AuthConnection *player_conn = AuthSrv_GetAuthConnection(srv, transfer.auth.auth_conn_token);
+        if (player_conn == NULL) {
+            log_warn("Connection %04" PRIXPTR " disconnected pending a transfer", transfer.auth.auth_conn_token);
+            return;
+        }
+
+        SocketAddr address = SocketAddr_LocalHostV4();
+        AuthSrv_SendGameServerInfo(
+            player_conn,
+            transfer.auth.req_id,
+            address,
+            server_id,
+            transfer.auth.player_token,
+            map_id);
+        AuthSrv_SendRequestResponse(player_conn, transfer.auth.req_id, 0);
+    } else if (transfer.type == AuthTransferType_Game) {
+        CtrlConnection *ctrl_conn = AuthSrv_GetCtrlConnection(srv, transfer.game.ctrl_conn_token);
+        if (ctrl_conn == NULL) {
+            log_warn("Connection %04" PRIXPTR " disconnected pending a transfer", transfer.game.ctrl_conn_token);
+            return;
+        }
+
+        SocketAddr address = SocketAddr_LocalHostV4();
+        AuthSrvCtrl_SendCompletePlayerTransfer(
+            ctrl_conn,
+            transfer.game.player_id,
+            transfer.game.char_id,
+            address,
+            server_id,
+            transfer.game.player_token,
+            map_id);
+    }
 }
 
 int AuthSrv_HandleClientHeartbeat(AuthConnection *conn, AuthCliMsg *cli_msg)
@@ -1024,7 +1116,7 @@ void AuthSrv_DoPostHandshake(AuthSrv *srv, Connection *conn)
         }
 
         CtrlConnection *ctrl_conn;
-        if ((ctrl_conn = AuthSrv_GetCtrlConn(srv, metadata->ctrl_conn)) == NULL) {
+        if ((ctrl_conn = AuthSrv_GetCtrlConnection(srv, metadata->ctrl_conn)) == NULL) {
             log_warn("Can't find the ctrl conn for the server %" PRIu32, connected->current_server_id);
             Connection_Free(conn);
             stbds_hmdel(srv->objects, conn->token);
@@ -1038,14 +1130,14 @@ void AuthSrv_DoPostHandshake(AuthSrv *srv, Connection *conn)
             return;
         }
 
-        CtrlMsg msg = {CtrlMsgId_TransferUser};
-        msg.TransferUser.peer_addr = conn->peer_addr;
-        msg.TransferUser.source = IoSource_take(&conn->source);
-        msg.TransferUser.token = conn->token;
-        arc4_hash(conn->master_secret, msg.TransferUser.cipher_init_key);
-        msg.TransferUser.account_id = connected->account_id;
-        msg.TransferUser.char_id = connected->char_id;
-        CtrlConn_WriteMessage(ctrl_conn, &msg, sizeof(msg.TransferUser));
+        CtrlMsg msg = {CtrlMsgId_TransferConnection};
+        msg.TransferConnection.peer_addr = conn->peer_addr;
+        msg.TransferConnection.source = IoSource_take(&conn->source);
+        msg.TransferConnection.token = conn->token;
+        arc4_hash(conn->master_secret, msg.TransferConnection.cipher_init_key);
+        msg.TransferConnection.account_id = connected->account_id;
+        msg.TransferConnection.char_id = connected->char_id;
+        CtrlConn_WriteMessage(ctrl_conn, &msg, sizeof(msg.TransferConnection));
 
         stbds_hmdel(srv->objects, conn->token);
     } else if (conn->type == ConnType_Ctrl) {
@@ -1278,9 +1370,12 @@ void AuthSrv_ProcessCtrlConnectionEvent(AuthSrv *srv, CtrlConnection *conn, Even
         err = ERR_OK;
         switch (msg->msg_id) {
         case CtrlMsgId_ServerReady:
-            err = AuthSrvCtrl_ProcessServerReady(srv, conn, msg);
+            err = AuthSrvCtrl_HandleServerReady(srv, conn, &msg->ServerReady);
             break;
         case CtrlMsgId_PlayerLeft:
+            break;
+        case CtrlMsgId_StartPlayerTransfer:
+            err = AuthSrvCtrl_HandlerStartPlayerTransfer(srv, conn, &msg->StartPlayerTransfer);
             break;
         default:
             err = ERR_UNSUCCESSFUL;

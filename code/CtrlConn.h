@@ -3,7 +3,10 @@
 #define CtrlMsgDefs \
     X(ServerReady) \
     X(PlayerLeft) \
-    X(TransferUser)
+    X(TransferConnection) \
+    X(StartPlayerTransfer) \
+    X(CompletePlayerTransfer) \
+    X(CancelPlayerTransfer)
 
 typedef enum CtrlMsgId {
     CtrlMsgId_None,
@@ -23,7 +26,7 @@ typedef struct CtrlMsg_PlayerLeft {
     GmUuid    account_id;
 } CtrlMsg_PlayerLeft;
 
-typedef struct CtrlMsg_TransferUser {
+typedef struct CtrlMsg_TransferConnection {
     CtrlMsgId   msg_id;
     SocketAddr  peer_addr;
     IoSource    source;
@@ -32,7 +35,30 @@ typedef struct CtrlMsg_TransferUser {
     bool        reconnection;
     GmUuid      account_id;
     GmUuid      char_id;
-} CtrlMsg_TransferUser;
+} CtrlMsg_TransferConnection;
+
+typedef struct CtrlMsg_StartPlayerTransfer {
+    CtrlMsgId  msg_id;
+    uint32_t   player_id;
+    GmUuid     account_id;
+    GmUuid     char_id;
+    GmDistrict district;
+} CtrlMsg_StartPlayerTransfer;
+
+typedef struct CtrlMsg_CompletePlayerTransfer {
+    CtrlMsgId  msg_id;
+    uint32_t   player_id;
+    GmUuid     char_id;
+    SocketAddr address;
+    uint32_t   map_token;
+    uint32_t   player_token;
+    uint16_t   map_id;
+    DistrictRegion region;
+} CtrlMsg_CompletePlayerTransfer;
+
+typedef struct CtrlMsg_CancelPlayerTransfer {
+    CtrlMsgId msg_id;
+} CtrlMsg_CancelPlayerTransfer;
 
 typedef union CtrlMsg {
     CtrlMsgId           msg_id;

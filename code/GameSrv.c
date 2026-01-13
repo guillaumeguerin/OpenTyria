@@ -78,7 +78,7 @@ int GameSrv_Setup(GameSrv *srv, GameSrvSetupParams params)
     int err;
 
     srv->server_id = params.server_id;
-    srv->map_district = params.district;
+    srv->district = params.district;
     srv->ctrl_conn.peer_addr = params.ctrl_srv_addr;
 
     if ((err = iocp_setup(&srv->iocp)) != 0) {
@@ -698,7 +698,7 @@ void GameSrv_SendCurrentMap(GameSrv *srv, GameConnection *conn)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_MAP_UPDATE_CURRENT);
     GameSrv_UpdateCurrentMap *msg = &buffer->update_current_map;
-    msg->map_id = srv->map_district.map_id;
+    msg->map_id = srv->district.map_id;
     msg->unk = 0;
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
@@ -714,10 +714,10 @@ void GameSrv_SendInstanceLoadInfo(GameSrv *srv, GameConnection *conn, GmPlayer *
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_INSTANCE_LOAD_INFO);
     GameSrv_InstanceInfo *msg = &buffer->instance_info;
     msg->agent = player->agent_id;
-    msg->map_id = srv->map_district.map_id;
+    msg->map_id = srv->district.map_id;
     msg->is_explorable = 0; // what to put here?
-    msg->district = srv->map_district.district_number;
-    msg->language = DistrictLanguage_ToInt(srv->map_district.language);
+    msg->district = srv->district.district_number;
+    msg->language = DistrictLanguage_ToInt(srv->district.language);
     msg->is_observer = 0;
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
@@ -840,7 +840,7 @@ void GameSrv_SendDownloadManifest(GameSrv *srv, GameConnection *conn)
         GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_INSTANCE_MANIFEST_DONE);
         GameSrv_InstanceManifestDone *msg = &buffer->instance_manifest_done;
         msg->download_phase = ManifestPhase_Phase1;
-        msg->map_id = srv->map_district.map_id;
+        msg->map_id = srv->district.map_id;
         msg->unk = 0;
         GameConnection_SendMessage(conn, buffer, sizeof(*msg));
     }
@@ -1196,7 +1196,7 @@ int GameSrv_CreatePlayerBags(GameSrv *srv, GmPlayer *player)
     return ERR_OK;
 }
 
-void GameSrvCtrl_HandleTransferUser(GameSrv *srv, CtrlMsg_TransferUser *msg)
+void GameSrvCtrl_HandleTransferConnection(GameSrv *srv, CtrlMsg_TransferConnection *msg)
 {
     GameConnection conn = {0};
     conn.token = msg->token;
@@ -1226,7 +1226,7 @@ void GameSrvCtrl_HandleTransferUser(GameSrv *srv, CtrlMsg_TransferUser *msg)
         abort();
     }
 
-    switch (srv->map_district.map_type) {
+    switch (srv->district.map_type) {
     case MapType_CharacterCreation:
         GameSrv_SendInstanceHead(srv, &conn);
         GameSrv_SendCharacterCreationStart(srv, &conn);
@@ -1247,6 +1247,73 @@ void GameSrvCtrl_HandleTransferUser(GameSrv *srv, CtrlMsg_TransferUser *msg)
 
     // @TODO: Send all initial packets?
     stbds_hmput(srv->connections, conn.token, conn);
+}
+
+void GameSrvCtrl_HandleCompletePlayerTransfer(GameSrv *srv, CtrlMsg_CompletePlayerTransfer *msg)
+{
+    GmPlayer *player;
+    if ((player = GameSrv_GetPlayer(srv, msg->player_id)) == NULL) {
+        log_warn("Received 'CompletePlayerTransfer', but player isn't on the server anymore");
+        return;
+    }
+
+    if (!uuid_equals(&player->char_id, &msg->char_id)) {
+        log_error("Received 'CompletePlayerTransfer', but player char id doesn't match expected char id");
+        return;
+    }
+
+    GameConnection *conn;
+    if ((conn = GameSrv_GetConnection(srv, player->conn_token)) == NULL) {
+        log_error("Received 'CompletePlayerTransfer', but the player doesn't have a connection anymore");
+        return;
+    }
+
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_TRANSFER_GAME_SERVER_INFO);
+    GameSrv_TransferGameServerInfo *msg2 = &buffer->transfer_game_server_info;
+    msg2->map_token = msg->map_token;
+    msg2->region = msg->region;
+    msg2->map_id = msg->map_id;
+    msg2->is_explorable = 0;
+    msg2->player_token = msg->player_token;
+
+    switch (msg->address.af)
+    {
+    case AddressFamily_V4:
+        le16enc(&msg2->host[0], AF_INET);
+        be16enc(&msg2->host[2], msg->address.v4.port);
+        memcpy(&msg2->host[4], msg->address.v4.bytes, sizeof(msg->address.v4.bytes));
+        break;
+    case AddressFamily_V6:
+        le16enc(&msg2->host[0], AF_INET6);
+        be16enc(&msg2->host[2], msg->address.v6.port);
+        memcpy(&msg2->host[4], msg->address.v6.bytes, sizeof(msg->address.v6.bytes));
+        break;
+    default:
+        abort();
+    }
+
+    GameConnection_SendMessage(conn, buffer, sizeof(*msg2));
+
+    // @Cleanup: Actually remove the player / agent / etc. from this map
+    // GameSrv_HandleDisconnect
+}
+
+void GameSrvCtrl_StartPlayerTransfer(GameSrv *srv, GmPlayer *player)
+{
+    int err;
+
+    CtrlMsg msg = {CtrlMsgId_StartPlayerTransfer};
+    msg.StartPlayerTransfer.player_id = player->player_id;
+    msg.StartPlayerTransfer.account_id = player->account_id;
+    msg.StartPlayerTransfer.char_id = player->char_id;
+    msg.StartPlayerTransfer.district = srv->district;
+    msg.StartPlayerTransfer.district.map_type = MapType_MainTown;
+
+    if ((err = CtrlConn_WriteMessage(&srv->ctrl_conn, &msg, sizeof(msg.StartPlayerTransfer))) != 0) {
+        // @Cleanup: Figure out what to do here. Probably just kick the player.
+        log_error("Couldn't request a player transfer");
+        return;
+    }
 }
 
 void GameSrv_ProcessCtrlEvent(GameSrv *srv, Event event)
@@ -1286,8 +1353,14 @@ void GameSrv_ProcessCtrlEvent(GameSrv *srv, Event event)
         switch (msg->msg_id) {
         case CtrlMsgId_None:
             break;
-        case CtrlMsgId_TransferUser:
-            GameSrvCtrl_HandleTransferUser(srv, &msg->TransferUser);
+        case CtrlMsgId_TransferConnection:
+            GameSrvCtrl_HandleTransferConnection(srv, &msg->TransferConnection);
+            break;
+        case CtrlMsgId_CompletePlayerTransfer:
+            GameSrvCtrl_HandleCompletePlayerTransfer(srv, &msg->CompletePlayerTransfer);
+            break;
+        case CtrlMsgId_CancelPlayerTransfer:
+            // GameSrvCtrl_HandlePlayerTransferFailure(srv, &msg->PlayerTransferFailure);
             break;
         }
     }
@@ -1696,16 +1769,17 @@ int GameSrv_HandleCharCreationConfirm(GameSrv *srv, size_t player_id, GameSrv_Ch
     }
 
     buffer = GameSrv_BuildMsg(srv, GAME_SMSG_CHAR_CREATION_SUCCESS);
-    GameSrv_CharCreationSuccess *result = &buffer->char_creation_success;
-    uuid_enc_le(result->char_id, &player->char_id);
-    STATIC_ASSERT(sizeof(result->n_name) <= sizeof(msg->n_name));
-    result->n_name = msg->n_name;
-    memcpy_u16(result->name, msg->name, msg->n_name);
-    result->idk = 0x2211; // what is that?
+    GameSrv_CharCreationSuccess *msg3 = &buffer->char_creation_success;
+    uuid_enc_le(msg3->char_id, &player->char_id);
+    STATIC_ASSERT(sizeof(msg3->n_name) <= sizeof(msg->n_name));
+    msg3->n_name = msg->n_name;
+    memcpy_u16(msg3->name, msg->name, msg->n_name);
+    msg3->idk = 0x2211; // what is that?
     CharacterSettings settings = CharacterSettings_FromDbCharacter(&player->character);
-    STATIC_ASSERT(sizeof(settings) <= sizeof(result->settings));
-    result->n_settings = sizeof(settings);
-    memcpy(result->settings, &settings, sizeof(settings));
+    STATIC_ASSERT(sizeof(settings) <= sizeof(msg3->settings));
+    msg3->n_settings = sizeof(settings);
+    memcpy(msg3->settings, &settings, sizeof(settings));
+    GameConnection_SendMessage(conn, buffer, sizeof(*msg3));
 
     GameSrv_RemovePlayer(srv, player->player_id);
     return ERR_OK;
@@ -1895,7 +1969,7 @@ int GameSrv_LoadMap(GameSrv *srv)
     int err;
 
     MapId map_id;
-    if ((err = MapId_FromInt(srv->map_district.map_id, &map_id)) != 0)
+    if ((err = MapId_FromInt(srv->district.map_id, &map_id)) != 0)
         return err;
 
     if ((srv->map_static_config = GetMapConfigForMapId(map_id)) == NULL) {
