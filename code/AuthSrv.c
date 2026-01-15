@@ -697,7 +697,7 @@ int AuthSrv_HandleChangePlayCharacter(AuthConnection *conn, AuthCliMsg *msg)
     }
 
     DbCharacterArray characters = conn->characters;
-    for (size_t idx = 0; characters.len; ++idx) {
+    for (size_t idx = 0; idx < characters.len; ++idx) {
         DbCharacter *ch = &characters.ptr[idx];
         if (ch->charname.len == msg->change_character.n_name &&
             memcmp_u16(ch->charname.buf, msg->change_character.name, ch->charname.len) == 0)
