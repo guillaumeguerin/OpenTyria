@@ -27,6 +27,7 @@ def main(args):
     scanner = ProcessScanner(proc)
     smsg_addr = scanner.find(b'\xFF\x46\x3C\x41', +0x45)
     cmsg_addr = scanner.find(b'\xF7\xD8\xC7\x47\x54\x01\x00\x00\x00\x1B\xC0\x25', -0xBF)
+    auth_send_packet_addr = scanner.find(b'\xC7\x47\x54\x00\x00\x00\x00\x8B\x47\x54\xF7', -0xB1)
 
     tmp = scanner.find(b'\x50\x6A\x0F\x6A\x00\xFF\x35', +7)
     base_addr, = proc.read(tmp)
@@ -58,8 +59,16 @@ def main(args):
             name = game_cmsg_names[header]
         else:
             name = "unknown"
-        # now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f'SendPacket: {header}, 0x{header:X}, {name}')
+
+    @Hook.stdcall(LPVOID, LPVOID)
+    def on_auth_send_packet(ctx, packet):
+        header, = proc.read(packet, 'I')
+        if header in auth_cmsg_names:
+            name = auth_cmsg_names[header]
+        else:
+            name = "unknown"
+        print(f'AuthSendPacket: (ctx: {ctx:X}) {header}, 0x{header:X}, {name}')
 
     @Hook.rawcall
     def on_recv_packet(ctx):
@@ -71,13 +80,28 @@ def main(args):
         else:
             name = "unknown"
 
-        if name in ('GAME_SMSG_AGENT_MOVEMENT_TICK', 'GAME_SMSG_AGENT_UPDATE_DIRECTION', 'GAME_SMSG_AGENT_MOVE_TO_POINT', 'GAME_SMSG_AGENT_UPDATE_SPEED', 'GAME_SMSG_AGENT_UPDATE_ROTATION', 'GAME_SMSG_AGENT_ATTR_UPDATE_INT', 'GAME_SMSG_WORLD_SIMULATION_TICK', 'GAME_SMSG_PING_REPLY', 'GAME_SMSG_PING_REQUEST'):
+        if name in ('GAME_SMSG_AGENT_MOVEMENT_TICK', 'GAME_SMSG_AGENT_UPDATE_DIRECTION', 'GAME_SMSG_AGENT_MOVE_TO_POINT', 'GAME_SMSG_AGENT_UPDATE_SPEED', 'GAME_SMSG_AGENT_UPDATE_ROTATION', 'GAME_SMSG_AGENT_ATTR_UPDATE_INT', 'GAME_SMSG_WORLD_SIMULATION_TICK', 'GAME_SMSG_PING_REQUEST'):
             return
 
         # now = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
         print(f'RecvPacket ({ctx.Esi:X}): {header}, 0x{header:X}, {name}')
 
-        """
+        if name == 'GAME_SMSG_PING_REPLY':
+            val, = proc.read(packet + 4, 'I')
+            print(f'>> val = {val} (0x{val:X})')
+
+        if name == 'AUTH_SMSG_GAME_SERVER_INFO':
+            req_id, map_token, map_id, host, player_token = proc.read(packet + 4, 'III24sI')
+            print(f'>> req_id = {req_id}, map_token = {map_token}, map_id = {map_id}, player_token = {player_token}')
+
+        if name == 'AUTH_SMSG_FRIEND_STREAM_END':
+            unk1, unk2 = proc.read(packet + 4, 'II')
+            print(f'>> unk1 = {unk1}, unk2 = {unk2}')
+
+        if name == 'AUTH_SMSG_ACCOUNT_SETTINGS':
+            req_id, n_data = proc.read(packet + 4, 'II')
+            print(f'>> req_id = {req_id}, n_data = {n_data}')
+
         if name == 'AUTH_SMSG_SESSION_INFO':
             server_salt, unk0, unk1 = proc.read(packet + 4, 'III')
             print(f'>> server_salt = {server_salt}, unk0 = {unk0}, unk1 = {unk1}')
@@ -86,6 +110,7 @@ def main(args):
             req_id, status = proc.read(packet + 4, 'II')
             print(f'>> req_id = {req_id}, status = {status}')
 
+        """
         if name == 'GAME_SMSG_WINDOW_TRADER':
             tab_typ, item_type, item_amount, h00d = proc.read(packet + 4, 'IIII')
             print(f'>> tab_typ = {tab_typ}, item_type = {item_type}, item_amount = {item_amount}, h00d = {h00d}')
@@ -223,6 +248,7 @@ def main(args):
 
     with ProcessDebugger(proc) as dbg:
         dbg.add_hook(smsg_addr, on_recv_packet)
+        dbg.add_hook(auth_send_packet_addr, on_auth_send_packet)
         # dbg.add_hook(cmsg_addr, on_send_packet)
         print(f'Start debugging process {proc.name}, {proc.id}')
         while running:
