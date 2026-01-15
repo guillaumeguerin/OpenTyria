@@ -35,6 +35,16 @@ int GameConnection_FlushOutgoingBuffer(GameConnection *conn)
     return ERR_OK;
 }
 
+int GameConnection_Shutdown(GameConnection *conn)
+{
+    int err;
+    (void) GameConnection_FlushOutgoingBuffer(conn);
+    if ((err = sys_shutdown(conn->source.socket, SYS_SHUT_BOTH)) != 0) {
+        log_error("sys_shutdown failed, err: %d", err);
+    }
+    return 0;
+}
+
 int GameSrv_ConnectCtrlConn(GameSrv *srv)
 {
     int err;
@@ -1697,6 +1707,7 @@ int GameSrv_HandleCharCreationConfirm(GameSrv *srv, size_t player_id, GameSrv_Ch
     result->n_settings = sizeof(settings);
     memcpy(result->settings, &settings, sizeof(settings));
 
+    GameSrv_RemovePlayer(srv, player->player_id);
     return ERR_OK;
 }
 
@@ -1714,12 +1725,6 @@ void GameSrv_HandleDisconnect(GameSrv *srv, size_t player_id)
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) != NULL) {
         GameSrv_RemoveConnection(srv, player->conn_token);
-
-        if (player->agent_id != 0) {
-            // what more should be deleted?
-            GameSrv_RemoveAgentById(srv, player->agent_id);
-        }
-
         GameSrv_RemovePlayer(srv, player_id);
     }
 }

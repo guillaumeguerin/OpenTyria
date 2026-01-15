@@ -21,8 +21,22 @@ GmPlayer* GameSrv_CreatePlayer(
 
 void GameSrv_RemovePlayer(GameSrv *srv, size_t player_id)
 {
-    // nothing to free in GmPlayer
-    assert(player_id < srv->players.len);
+    GmPlayer *player;
+    if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
+        log_warn("Tried to remove the player %zu which doesn't exist", player_id);
+        return;
+    }
+
+    GameConnection *conn;
+    if ((conn = GameSrv_GetConnection(srv, player->conn_token)) != NULL) {
+        GameConnection_Shutdown(conn);
+        GameSrv_RemoveConnection(srv, player->conn_token);
+    }
+
+    if (player->agent_id != 0) {
+        GameSrv_RemoveAgentById(srv, player->agent_id);
+    }
+
     memset(&srv->players.ptr[player_id], 0, sizeof(srv->players.ptr[player_id]));
     --srv->player_count;
 }
