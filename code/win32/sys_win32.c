@@ -62,6 +62,15 @@ void sys_closesocket(uintptr_t fd)
     closesocket(fd);
 }
 
+int sys_shutdown(uintptr_t fd, int flags)
+{
+    if (shutdown(fd, flags) != SOCKET_ERROR) {
+        return 0;
+    } else {
+        return WSAGetLastError();
+    }
+}
+
 int sys_enable_nonblocking(uintptr_t fd, bool enable)
 {
     u_long flag = enable ? 1 : 0;

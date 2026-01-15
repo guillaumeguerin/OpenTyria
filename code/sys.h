@@ -17,8 +17,13 @@ typedef struct UtcTime {
 int sys_get_utc_time(UtcTime *time);
 uint64_t sys_get_monotonic_time_ms();
 
+#define SYS_SHUT_RECV 0
+#define SYS_SHUT_SEND 1
+#define SYS_SHUT_BOTH 2
+
 int  sys_socket(uintptr_t *result, int af, int type, int protocol);
 void sys_closesocket(uintptr_t fd);
+int  sys_shutdown(uintptr_t fd, int flags);
 
 int  sys_enable_nonblocking(uintptr_t fd, bool enable);
 int  sys_set_reuseaddr(uintptr_t fd, bool enable);
