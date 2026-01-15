@@ -33,6 +33,7 @@ import sys
 import ctypes
 import struct
 import functools
+import traceback
 
 BOOL        = ctypes.c_long
 BYTE        = ctypes.c_byte
@@ -792,11 +793,9 @@ class ProcessDebugger(object):
                 _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, _DBG_CONTINUE)
             elif evt.dwDebugEventCode == _EXCEPTION_DEBUG_EVENT:
                 continue_status = _DBG_CONTINUE
-                try:
-                    thread = ProcessThread(evt.dwThreadId, self.proc)
-                    continue_status = self._on_debug_event(thread, evt.u.Exception)
-                finally:
-                    _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, continue_status)
+                thread = ProcessThread(evt.dwThreadId, self.proc)
+                continue_status = self._on_debug_event(thread, evt.u.Exception)
+                _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, continue_status)
             else:
                 _ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, _DBG_EXCEPTION_NOT_HANDLED)
 
@@ -833,14 +832,15 @@ class ProcessDebugger(object):
             stack_args = self.proc.read(ctx.Esp + 4, argstr)
             args.extend(stack_args)
 
-        # What should we do here ??? (We don't want to crash the remote process)
         try:
             hook(*args)
-        finally:
-            ctx.Eip -= 1
-            if not self.exiting:
-                ctx.EFlags |= _DBG_TRAP_FLAGS
-            thread.set_context(ctx)
+        except Exception:
+            traceback.print_exc()
+
+        ctx.Eip -= 1
+        if not self.exiting:
+            ctx.EFlags |= _DBG_TRAP_FLAGS
+        thread.set_context(ctx)
         return _DBG_CONTINUE
 
     def _on_breakpoint64(self, thread, breakpoint):
@@ -867,11 +867,13 @@ class ProcessDebugger(object):
 
         try:
             hook(*args)
-        finally:
-            ctx.Rip -= 1
-            if not self.exiting:
-                ctx.EFlags |= _DBG_TRAP_FLAGS
-            thread.set_context(ctx)
+        except Exception:
+            traceback.print_exc()
+
+        ctx.Rip -= 1
+        if not self.exiting:
+            ctx.EFlags |= _DBG_TRAP_FLAGS
+        thread.set_context(ctx)
         return _DBG_CONTINUE
 
     def _on_breakpoint(self, thread, addr):
