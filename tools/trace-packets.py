@@ -29,6 +29,11 @@ def main(args):
     cmsg_addr = scanner.find(b'\xF7\xD8\xC7\x47\x54\x01\x00\x00\x00\x1B\xC0\x25', -0xBF)
     auth_send_packet_addr = scanner.find(b'\xC7\x47\x54\x00\x00\x00\x00\x8B\x47\x54\xF7', -0xB1)
 
+    tmp = scanner.find(b'\x6A\x02\x50\xFF\x71\x14\xC7\x45\xF8\x0D\x00', -0xD)
+    auth_ctx, = proc.read(tmp, 'I')
+    tmp, = proc.read(auth_ctx, 'I')
+    auth_send_packet_ctx, = proc.read(tmp + 0x14, 'I')
+
     tmp = scanner.find(b'\x50\x6A\x0F\x6A\x00\xFF\x35', +7)
     base_addr, = proc.read(tmp)
     print(f'base_addr = 0x{base_addr:08X}')
@@ -64,10 +69,12 @@ def main(args):
     @Hook.stdcall(LPVOID, LPVOID)
     def on_auth_send_packet(ctx, packet):
         header, = proc.read(packet, 'I')
-        if header in auth_cmsg_names:
-            name = auth_cmsg_names[header]
-        else:
-            name = "unknown"
+        name = "unknown"
+        if ctx == auth_send_packet_ctx:
+            if header in auth_smsg_names:
+                name = auth_smsg_names[header]
+        elif header in game_smsg_names:
+            name = game_smsg_names[header]
         print(f'AuthSendPacket: (ctx: {ctx:X}) {header}, 0x{header:X}, {name}')
 
     @Hook.rawcall
@@ -75,10 +82,12 @@ def main(args):
         packet, = proc.read(ctx.Esp, 'I')
         header, = proc.read(packet, 'I')
 
-        if header in game_smsg_names:
+        name = "unknown"
+        if ctx.Esi == auth_send_packet_ctx:
+            if header in auth_smsg_names:
+                name = auth_smsg_names[header]
+        elif header in game_smsg_names:
             name = game_smsg_names[header]
-        else:
-            name = "unknown"
 
         if name in ('GAME_SMSG_AGENT_MOVEMENT_TICK', 'GAME_SMSG_AGENT_UPDATE_DIRECTION', 'GAME_SMSG_AGENT_MOVE_TO_POINT', 'GAME_SMSG_AGENT_UPDATE_SPEED', 'GAME_SMSG_AGENT_UPDATE_ROTATION', 'GAME_SMSG_AGENT_ATTR_UPDATE_INT', 'GAME_SMSG_WORLD_SIMULATION_TICK', 'GAME_SMSG_PING_REQUEST'):
             return
