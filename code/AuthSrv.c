@@ -646,10 +646,6 @@ int AuthSrv_HandlePortalAccountLogin(AuthSrv *srv, AuthConnection *conn, AuthCli
         }
     }
 
-    if (conn->selected_character_idx < conn->characters.len) {
-        connected_account->char_id = conn->characters.ptr[conn->selected_character_idx].char_id;
-    }
-
     AuthSrv_SendCharactersInfo(conn, msg->req_id);
     AuthSrv_SendAccountSettings(conn, msg->req_id);
     AuthSrv_SendFriendStreamEnd(conn, msg->req_id);
@@ -702,6 +698,8 @@ int AuthSrv_HandleChangePlayCharacter(AuthConnection *conn, AuthCliMsg *msg)
         if (ch->charname.len == msg->change_character.n_name &&
             memcmp_u16(ch->charname.buf, msg->change_character.name, ch->charname.len) == 0)
         {
+            log_debug("Updating selected charcter to index %zu", idx);
+            conn->selected_character_idx = idx;
             AuthSrv_SendRequestResponse(conn, msg->change_character.req_id, 0);
             return ERR_OK;
         }
@@ -740,11 +738,6 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         return ERR_OK;
     }
 
-    GmUuid char_id = {0};
-    if (conn->selected_character_idx < conn->characters.len) {
-        char_id = conn->characters.ptr[conn->selected_character_idx].char_id;
-    }
-
     ConnectedAccountInfo *connected;
     if ((connected = AuthSrv_GetConnectedAccount(srv, conn->account_id)) == NULL) {
         log_error("Account expected to be connected");
@@ -758,6 +751,13 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
         return ERR_OK;
     }
+
+    GmUuid char_id = {0};
+    if (conn->selected_character_idx < conn->characters.len) {
+        char_id = conn->characters.ptr[conn->selected_character_idx].char_id;
+    }
+
+    connected->char_id = char_id;
 
     size_t idx;
     if (AuthSrvCtrl_FindCompatibleGameSrv(srv, district, &idx) != 0) {

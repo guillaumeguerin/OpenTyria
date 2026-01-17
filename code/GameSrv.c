@@ -2009,6 +2009,8 @@ void GameSrv_ThreadEntry(void *param)
         return;
     }
 
+    log_debug("Server %" PRIu32 " started...", srv->server_id);
+
     while (!srv->quit_signaled) {
         GameSrv_Update(srv);
     }
