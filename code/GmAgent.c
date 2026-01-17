@@ -10,24 +10,23 @@ bool GameSrv_AgentBaseClassIsPlayer(GmAgent *agent)
 
 GmAgent* GameSrv_CreateAgent(GameSrv *srv)
 {
-    uint32_t agent_id = GmIdAllocate(&srv->free_agents_slots, &srv->agents.base, sizeof(srv->agents.ptr[0]));
-    memset(&srv->agents.ptr[agent_id], 0, sizeof(srv->agents.ptr[agent_id]));
-    srv->agents.ptr[agent_id].agent_id = agent_id;
-    return &srv->agents.ptr[agent_id];
+    uint32_t agent_id = GmIdAllocate(&srv->agents.base, sizeof(srv->agents.buffer[0]));
+    GmAgent *agent = &srv->agents.buffer[agent_id];
+    memset(agent, 0, sizeof(*agent));
+    agent->agent_id = agent_id;
+    return agent;
 }
 
 GmAgent* GameSrv_GetAgent(GameSrv *srv, uint32_t agent_id)
 {
-    if (srv->agents.len <= agent_id) {
+    if (srv->agents.size <= agent_id) {
         return NULL;
     }
-
-    GmAgent *result = &srv->agents.ptr[agent_id];
-    if (result->agent_id != agent_id) {
+    GmAgent *agent = &srv->agents.buffer[agent_id];
+    if (agent->agent_id != agent_id) {
         return NULL;
     }
-
-    return result;
+    return agent;
 }
 
 GmAgent* GameSrv_GetAgentOrAbort(GameSrv *srv, uint32_t agent_id)
@@ -47,7 +46,7 @@ void GameSrv_RemoveAgentById(GameSrv *srv, uint32_t agent_id)
     }
 
     result->agent_id = 0;
-    array_add(&srv->free_agents_slots, agent_id);
+    GmIdFree(&srv->agents.base, agent_id, sizeof(srv->agents.buffer[0]));
 
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_WORLD_REMOVE_AGENT);
     GameSrv_AgentRemove *msg = &buffer->agent_remove;
@@ -295,8 +294,8 @@ void GameSrv_BroadcastAgentDisplayCape(GameSrv *srv, GmAgent *agent)
 
 void GameSrv_SendWorldAgents(GameSrv *srv, GameConnection *conn, GmAgent *player_agent)
 {
-    for (size_t idx = 0; idx < srv->agents.len; ++idx) {
-        GmAgent *agent = &srv->agents.ptr[idx];
+    for (size_t idx = 1; idx < srv->agents.size; ++idx) {
+        GmAgent *agent = &srv->agents.buffer[idx];
         if (agent->agent_id == 0 || agent->agent_id == player_agent->agent_id) {
             continue;
         }
@@ -335,8 +334,8 @@ void GameSrv_WorldTick(GameSrv *srv)
     float delta = (float)delta_time / 1000.f;
 
     GmAgentArray agents = srv->agents;
-    for (size_t idx = 0; idx < agents.len; ++idx) {
-        GmAgent *agent = &agents.ptr[idx];
+    for (size_t idx = 0; idx < agents.size; ++idx) {
+        GmAgent *agent = &agents.buffer[idx];
         if (agent->agent_id != idx) {
             continue;
         }

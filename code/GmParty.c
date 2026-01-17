@@ -2,21 +2,21 @@
 
 void GameSrv_FastDeleteParty(GameSrv *srv, uint32_t party_id)
 {
-    assert(party_id < srv->parties.len);
-    srv->parties.ptr[party_id].party_id = 0;
-    array_add(&srv->free_parties_slots, party_id);
+    assert(party_id < srv->parties.size);
+    srv->parties.buffer[party_id].party_id = 0;
+    GmIdFree(&srv->parties.base, party_id, sizeof(srv->parties.buffer[0]));
 }
 
 GmParty* GameSrv_CreateParty(GameSrv *srv)
 {
-    uint32_t party_id = GmIdAllocate(&srv->free_parties_slots, &srv->parties.base, sizeof(srv->parties.ptr[0]));
+    uint32_t party_id = GmIdAllocate(&srv->parties.base, sizeof(srv->parties.buffer[0]));
 
     if ((uint32_t)UINT16_MAX < party_id) {
         GameSrv_FastDeleteParty(srv, party_id);
         return NULL;
     }
 
-    GmParty *party = &srv->parties.ptr[party_id];
+    GmParty *party = &srv->parties.buffer[party_id];
     memset(party, 0, sizeof(*party));
     party->party_id = cast_u16(party_id);
     return party;
@@ -24,11 +24,11 @@ GmParty* GameSrv_CreateParty(GameSrv *srv)
 
 GmParty* GameSrv_GetParty(GameSrv *srv, uint16_t party_id)
 {
-    if (srv->parties.len <= (size_t) party_id) {
+    if (srv->parties.size <= party_id) {
         return NULL;
     }
 
-    GmParty *party = &srv->parties.ptr[(size_t) party_id];
+    GmParty *party = &srv->parties.buffer[party_id];
     if (party->party_id != party_id) {
         return NULL;
     }

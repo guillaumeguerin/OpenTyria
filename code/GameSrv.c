@@ -116,12 +116,9 @@ void GameSrv_Free(GameSrv *srv)
     array_free(&srv->connections_to_remove);
     array_free(&srv->events);
     sys_mutex_free(&srv->mtx);
-    array_free(&srv->players);
-    array_free(&srv->free_players_slots);
-    array_free(&srv->items);
-    array_free(&srv->free_items_slots);
-    array_free(&srv->agents);
-    array_free(&srv->free_agents_slots);
+    GmIdTableFree(&srv->players.base);
+    GmIdTableFree(&srv->items.base);
+    GmIdTableFree(&srv->agents.base);
     array_free(&srv->text_builder);
     GmMapContext_Free(&srv->map_context);
     CtrlConn_Free(&srv->ctrl_conn);
@@ -1389,7 +1386,7 @@ int GameSrv_UpdateCtrlConnection(GameSrv *srv)
     return 0;
 }
 
-int GameSrv_HandleInstanceLoadRequestSpawn(GameSrv *srv, size_t player_id)
+int GameSrv_HandleInstanceLoadRequestSpawn(GameSrv *srv, uint32_t player_id)
 {
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
@@ -1423,7 +1420,7 @@ int GameSrv_HandleInstanceLoadRequestSpawn(GameSrv *srv, size_t player_id)
     return ERR_OK;
 }
 
-int GameSrv_HandleInstanceLoadRequestPlayers(GameSrv *srv, size_t player_id, GameSrv_RequestPlayers *msg)
+int GameSrv_HandleInstanceLoadRequestPlayers(GameSrv *srv, uint32_t player_id, GameSrv_RequestPlayers *msg)
 {
     UNREFERENCED_PARAMETER(msg);
 
@@ -1483,7 +1480,7 @@ int GameSrv_HandleInstanceLoadRequestPlayers(GameSrv *srv, size_t player_id, Gam
     return ERR_OK;
 }
 
-int GameSrv_HandleInstanceLoadRequestItems(GameSrv *srv, size_t player_id, GameSrv_RequestItems *msg)
+int GameSrv_HandleInstanceLoadRequestItems(GameSrv *srv, uint32_t player_id, GameSrv_RequestItems *msg)
 {
     UNREFERENCED_PARAMETER(msg);
 
@@ -1514,7 +1511,7 @@ int GameSrv_HandleInstanceLoadRequestItems(GameSrv *srv, size_t player_id, GameS
     return ERR_OK;
 }
 
-int GameSrv_HandleCharCreationRequestPlayer(GameSrv *srv, size_t player_id)
+int GameSrv_HandleCharCreationRequestPlayer(GameSrv *srv, uint32_t player_id)
 {
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
@@ -1544,7 +1541,7 @@ int GameSrv_HandleCharCreationRequestPlayer(GameSrv *srv, size_t player_id)
     return ERR_OK;
 }
 
-int GameSrv_HandleCharCreationRequestArmors(GameSrv *srv, size_t player_id)
+int GameSrv_HandleCharCreationRequestArmors(GameSrv *srv, uint32_t player_id)
 {
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
@@ -1609,7 +1606,7 @@ int GetBagSlotForItemType(ItemType item_type, EquippedItemSlot *result)
     }
 }
 
-int GameSrv_HandleCharCreationChangeProf(GameSrv *srv, size_t player_id, GameSrv_CharCreationChangeProf *msg)
+int GameSrv_HandleCharCreationChangeProf(GameSrv *srv, uint32_t player_id, GameSrv_CharCreationChangeProf *msg)
 {
     int err;
 
@@ -1672,7 +1669,7 @@ int GameSrv_HandleChangeEquippedItemColor(GameSrv *srv, size_t player_id, GameSr
     return ERR_OK;
 }
 
-int GameSrv_HandleCharCreationConfirm(GameSrv *srv, size_t player_id, GameSrv_CharCreationConfirm *msg)
+int GameSrv_HandleCharCreationConfirm(GameSrv *srv, uint32_t player_id, GameSrv_CharCreationConfirm *msg)
 {
     int err;
 
@@ -1794,7 +1791,7 @@ void GameSrv_RemoveConnection(GameSrv *srv, uintptr_t token)
     stbds_hmdel(srv->connections, token);
 }
 
-void GameSrv_HandleDisconnect(GameSrv *srv, size_t player_id)
+void GameSrv_HandleDisconnect(GameSrv *srv, uint32_t player_id)
 {
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) != NULL) {

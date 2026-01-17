@@ -176,4 +176,4 @@ bool GmBag_IsVolatile(BagModelId model_id);
 void GameSrv_FreeBagItems(GameSrv *srv, GmPlayer *player, GmBag *bag);
 void GameSrv_CreateDefaultBags(GameSrv *srv, GmPlayer *player);
 void GameSrv_SendBagItems(GameSrv *srv, GameConnection *conn, GmBag *bag);
-void GameSrv_SendInventory(GameSrv *srv, GameConnection *conn, size_t player_id);
+void GameSrv_SendInventory(GameSrv *srv, GameConnection *conn, uint32_t player_id);

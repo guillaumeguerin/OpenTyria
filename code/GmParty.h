@@ -31,6 +31,7 @@ typedef array(GmPartyPlayer) GmPartyPlayerArray;
 typedef array(GmPartyHench)  GmPartyHenchArray;
 
 typedef struct GmParty {
+    GmIdHeader         IdHeader;
     uint16_t           party_id;
     Difficulty         difficulty;
     uint8_t            player_max;
@@ -39,7 +40,7 @@ typedef struct GmParty {
     GmPartyHeroArray   heroes;
     GmPartyHenchArray  henchmans;
 } GmParty;
-typedef array(GmParty) GmPartyArray;
+typedef GmIdTable(GmParty) GmPartyArray;
 
 GmParty* GameSrv_CreateParty(GameSrv *srv);
 GmParty* GameSrv_GetParty(GameSrv *srv, uint16_t party_id);

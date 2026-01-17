@@ -19,6 +19,7 @@ typedef enum FactionType {
 } FactionType;
 
 typedef struct GmPlayer {
+    GmIdHeader        IdHeader;
     uint16_t          player_id;
     uint32_t          agent_id;
     uintptr_t         conn_token;
@@ -32,7 +33,7 @@ typedef struct GmPlayer {
     uint32_t          player_team_token;
     uint16_t          party_id;
 } GmPlayer;
-typedef array(GmPlayer) GmPlayerArray;
+typedef GmIdTable(GmPlayer) GmPlayerArray;
 
 GmPlayer* GameSrv_CreatePlayer(
     GameSrv *srv,
@@ -40,8 +41,8 @@ GmPlayer* GameSrv_CreatePlayer(
     GmUuid account_id,
     GmUuid char_id);
 
-void GameSrv_RemovePlayer(GameSrv *srv, size_t player_id);
-GmPlayer* GameSrv_GetPlayer(GameSrv *srv, size_t player_id);
+void GameSrv_RemovePlayer(GameSrv *srv, uint32_t player_id);
+GmPlayer* GameSrv_GetPlayer(GameSrv *srv, uint32_t player_id);
 
 void GameSrv_SendHardModeUnlocked(GameSrv *srv, GameConnection *conn);
 void GameSrv_SendPlayerMaxFactions(GameSrv *srv, GameConnection *conn, GmPlayer *player);

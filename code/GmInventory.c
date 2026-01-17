@@ -143,7 +143,7 @@ void GameSrv_SendBagItems(GameSrv *srv, GameConnection *conn, GmBag *bag)
     }
 }
 
-void GameSrv_SendInventory(GameSrv *srv, GameConnection *conn, size_t player_id)
+void GameSrv_SendInventory(GameSrv *srv, GameConnection *conn, uint32_t player_id)
 {
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {

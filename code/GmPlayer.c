@@ -6,26 +6,28 @@ GmPlayer* GameSrv_CreatePlayer(
     GmUuid account_id,
     GmUuid char_id)
 {
-    uint32_t player_id = GmIdAllocate(&srv->free_players_slots, &srv->players.base, sizeof(srv->players.ptr[0]));
+    uint32_t player_id = GmIdAllocate(&srv->players.base, sizeof(srv->players.buffer[0]));
 
-    GmPlayer *player = &srv->players.ptr[player_id];
+    GmPlayer *player = &srv->players.buffer[player_id];
     memset(player, 0, sizeof(*player));
     player->player_id = cast_u16(player_id);
     player->conn_token = token;
     player->account_id = account_id;
     player->char_id = char_id;
 
-    ++srv->player_count;
     return player;
 }
 
-void GameSrv_RemovePlayer(GameSrv *srv, size_t player_id)
+void GameSrv_RemovePlayer(GameSrv *srv, uint32_t player_id)
 {
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
         log_warn("Tried to remove the player %zu which doesn't exist", player_id);
         return;
     }
+
+    // Won't be accessible anymore.
+    player->player_id = 0;
 
     GameConnection *conn;
     if ((conn = GameSrv_GetConnection(srv, player->conn_token)) != NULL) {
@@ -37,14 +39,13 @@ void GameSrv_RemovePlayer(GameSrv *srv, size_t player_id)
         GameSrv_RemoveAgentById(srv, player->agent_id);
     }
 
-    memset(&srv->players.ptr[player_id], 0, sizeof(srv->players.ptr[player_id]));
-    --srv->player_count;
+    GmIdFree(&srv->players.base, player_id, sizeof(srv->players.buffer[0]));
 }
 
-GmPlayer* GameSrv_GetPlayer(GameSrv *srv, size_t player_id)
+GmPlayer* GameSrv_GetPlayer(GameSrv *srv, uint32_t player_id)
 {
-    if ((player_id < srv->players.len) && (srv->players.ptr[player_id].player_id == player_id)) {
-        return &srv->players.ptr[player_id];
+    if ((player_id < srv->players.size) && (srv->players.buffer[player_id].player_id == player_id)) {
+        return &srv->players.buffer[player_id];
     } else {
         return NULL;
     }

@@ -132,6 +132,7 @@ int ItemType_FromInt(int value, ItemType *result)
 }
 
 typedef struct GmItem {
+    GmIdHeader   IdHeader;
     uint32_t     item_id;
     uint32_t     file_id;
     ItemType     item_type;
@@ -155,7 +156,7 @@ typedef struct GmItem {
         uint32_t data[64];
     } modifiers;
 } GmItem;
-typedef array(GmItem) GmItemArray;
+typedef GmIdTable(GmItem) GmItemArray;
 typedef slice(GmItem) GmItemSlice;
 
 GmItem* GameSrv_AllocateItem(GameSrv *srv);

@@ -2,47 +2,33 @@
 
 GmItem* GameSrv_AllocateItem(GameSrv *srv)
 {
-    if (srv->free_items_slots.len == 0) {
-        size_t item_count = srv->items.len;
-        size_t new_size = max_size_t(item_count * 2, 64);
-        array_resize(&srv->items, new_size);
-        if (item_count == 0) {
-            ++item_count;
-        }
-        size_t added = new_size - item_count;
-        uint32_t *free_idxs = array_push(&srv->free_items_slots, added);
-        for (size_t idx = 0; idx < added; ++idx) {
-            free_idxs[idx] = (uint32_t)(item_count + idx);
-        }
-    }
-
-    uint32_t item_id = array_pop(&srv->free_items_slots);
-    srv->items.ptr[item_id].item_id = item_id;
-    return &srv->items.ptr[item_id];
+    uint32_t item_id = GmIdAllocate(&srv->items.base, sizeof(srv->items.buffer[0]));
+    GmItem *item = &srv->items.buffer[item_id];
+    memset(item, 0, sizeof(*item));
+    item->item_id = item_id;
+    return item;
 }
 
 void GameSrv_FreeItemId(GameSrv *srv, uint32_t item_id)
 {
     assert(item_id != 0);
 
-    if (srv->items.len <= item_id) {
-        log_warn("Can't free item id %" PRIu32 ", when the maximum is %zu", item_id, srv->items.len);
+    if (srv->items.size <= item_id) {
+        log_warn("Can't free item id %" PRIu32 ", when the maximum is %zu", item_id, srv->items.size);
         return;
     }
 
-    memset(&srv->items.ptr[item_id], 0, sizeof(srv->items.ptr[item_id]));
-    array_add(&srv->free_items_slots, item_id);
+    srv->items.buffer[item_id].item_id = 0;
+    GmIdFree(&srv->items.base, item_id, sizeof(srv->items.buffer[0]));
 }
 
 GmItem* GameSrv_GetItemById(GameSrv *srv, uint32_t item_id)
 {
-    if (srv->items.len <= item_id) {
+    if (srv->items.size <= item_id) {
         return NULL;
     }
-    GmItem *result = &srv->items.ptr[item_id];
-    if (result->item_id == 0) {
-        return NULL;
-    }
+    GmItem *result = &srv->items.buffer[item_id];
+    assert(!result->IdHeader.freed && result->item_id != 0);
     return result;
 }
 
