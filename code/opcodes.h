@@ -17,6 +17,7 @@
 #define AUTH_CMSG_ACCOUNT_CREATE                        (AUTH_CMSG_MASK | 0x0003) // 3
 #define AUTH_CMSG_ACCOUNT_LOGIN                         (AUTH_CMSG_MASK | 0x0004) // 4
 #define AUTH_CMSG_DELETE_CHARACTER                      (AUTH_CMSG_MASK | 0x0007) // 7
+#define AUTH_CMSG_UPDATE_CHARACTER_SETTINGS             (AUTH_CMSG_MASK | 0x0009) // 9
 #define AUTH_CMSG_CHANGE_PLAY_CHARACTER                 (AUTH_CMSG_MASK | 0x000A) // 10
 #define AUTH_CMSG_DISCONNECT                            (AUTH_CMSG_MASK | 0x000D) // 13
 #define AUTH_CMSG_SET_PLAYER_STATUS                     (AUTH_CMSG_MASK | 0x000E) // 14

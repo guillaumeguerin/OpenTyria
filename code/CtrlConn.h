@@ -24,6 +24,7 @@ typedef struct CtrlMsg_ServerReady {
 typedef struct CtrlMsg_PlayerLeft {
     CtrlMsgId msg_id;
     GmUuid    account_id;
+    GmUuid    char_id;
 } CtrlMsg_PlayerLeft;
 
 typedef struct CtrlMsg_TransferConnection {
@@ -91,4 +92,4 @@ int  CtrlConn_ProcessEvent(CtrlConnection *conn, Event event);
 int  CtrlConn_UpdateWrite(CtrlConnection *conn);
 int  CtrlConn_WriteHandshake(CtrlConnection *conn);
 int  CtrlConn_SendServerReady(CtrlConnection *conn, uint32_t server_id);
-int  CtrlConn_SendPlayerLeft(CtrlConnection *conn);
+int  CtrlConn_SendPlayerLeft(CtrlConnection *conn, GmUuid account_id, GmUuid char_id);

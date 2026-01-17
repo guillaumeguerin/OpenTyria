@@ -113,20 +113,20 @@ typedef struct CharacterSettings {
     uint32_t     last_time_played;  // not sure what is the value, but it changes everytime you play and playing with the same character on the same day almost always result to the same id.
     Appearance   appearance;
     GmUuid       last_guild_hall_id;
-    uint16_t     campaign             : 4; // 0=pvp, 1=prod, 2=faction, 3=nightfall
-    uint16_t     level                : LEVEL_BITS;
-    uint16_t     is_pvp               : 1;
-    uint16_t     secondary_profession : 4;
-    uint16_t     helm_status          : 2;
-    uint16_t     h001E;               // Seems to always be \xDD\xDD or \xAD\xBA aka BAAD (on purpose?)
+    unsigned int campaign             : 4; // 0=pvp, 1=prod, 2=faction, 3=nightfall
+    unsigned int level                : LEVEL_BITS;
+    unsigned int is_pvp               : 1;
+    unsigned int secondary_profession : 4;
+    unsigned int helm_status          : 2;
+    unsigned int h001E                : 16; // This is likely not on purpose, but a padding resulting from not defining it and using `unsigned int`. It leaks heap data (\xDD\xDD or \xAD\xBA) which are the first 2 bytes of 0xBAADF00D or 0xDDDDDDDD
     uint8_t      number_of_pieces;
-    uint8_t      h0021[4];            // Can be \xDD\xDD\xDD\xDD or \xF0\xAD\xBA\x0D
+    uint32_t     h0021;               // Seems to be uninitialized heap data (i.e., \xDD\xDD\xDD\xDD or \xF0\xAD\xBA\x0D), but can't be padding.
     struct
     {
         uint16_t     file_id;
         uint8_t      col1             : 4;
         uint8_t      col2             : 4;
-        uint8_t      zero;            // always 0 for some reason
+        uint8_t      unk;            // Almost always 0, but some pieces (e.g., Labyrinthine Leg Design) can have different values.
         uint8_t      col3             : 4;
         uint8_t      col4             : 4;
     } pieces[5]; // The number of pieces is defined by `number_of_pieces`.

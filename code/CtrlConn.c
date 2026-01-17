@@ -192,8 +192,10 @@ int CtrlConn_SendServerReady(CtrlConnection *conn, uint32_t server_id)
     return CtrlConn_WriteMessage(conn, &msg, sizeof(msg.ServerReady));
 }
 
-int CtrlConn_SendPlayerLeft(CtrlConnection *conn)
+int CtrlConn_SendPlayerLeft(CtrlConnection *conn, GmUuid account_id, GmUuid char_id)
 {
     CtrlMsg msg = { CtrlMsgId_PlayerLeft };
+    msg.PlayerLeft.account_id = account_id;
+    msg.PlayerLeft.char_id = char_id;
     return CtrlConn_WriteMessage(conn, &msg, sizeof(msg.PlayerLeft));
 }

@@ -829,6 +829,20 @@ void AuthSrvCtrl_SendCompletePlayerTransfer(
     }
 }
 
+int AuthSrvCtrl_HandlePlayerLeft(AuthSrv *srv, CtrlConnection *conn, CtrlMsg_PlayerLeft *msg)
+{
+    ConnectedAccountInfo *connected;
+    if ((connected = AuthSrv_GetConnectedAccount(srv, msg->account_id)) == NULL) {
+        return ERR_OK;
+    }
+
+    if (connected->current_server_id == conn->server_id) {
+        connected->current_server_id = 0;
+    }
+
+    return ERR_OK;
+}
+
 int AuthSrvCtrl_HandlerStartPlayerTransfer(AuthSrv *srv, CtrlConnection *conn, CtrlMsg_StartPlayerTransfer *msg)
 {
     ConnectedAccountInfo *connected;
@@ -968,6 +982,13 @@ int AuthSrv_HandleDeleteCharacter(AuthSrv *srv, AuthConnection *conn, AuthSrv_De
         return ERR_OK;
     }
 
+    AuthSrv_SendRequestResponse(conn, msg->req_id, 0);
+    return ERR_OK;
+}
+
+int AuthSrv_HandleUpdateCharacterSettings(AuthSrv *srv, AuthConnection *conn, AuthSrv_UpdateCharacterSettings *msg)
+{
+    UNREFERENCED_PARAMETER(srv);
     AuthSrv_SendRequestResponse(conn, msg->req_id, 0);
     return ERR_OK;
 }
@@ -1329,6 +1350,9 @@ void AuthSrv_ProcessAuthConnectionEvent(AuthSrv *srv, AuthConnection *conn, Even
         case AUTH_CMSG_DELETE_CHARACTER:
             err = AuthSrv_HandleDeleteCharacter(srv, conn, &msg->delete_character);
             break;
+        case AUTH_CMSG_UPDATE_CHARACTER_SETTINGS:
+            err = AuthSrv_HandleUpdateCharacterSettings(srv, conn, &msg->update_character_settings);
+            break;
         default:
             log_warn(
                 "Unhandled AuthSrv packet with header %" PRIu16 " (0x%" PRIX16 ")",
@@ -1373,6 +1397,7 @@ void AuthSrv_ProcessCtrlConnectionEvent(AuthSrv *srv, CtrlConnection *conn, Even
             err = AuthSrvCtrl_HandleServerReady(srv, conn, &msg->ServerReady);
             break;
         case CtrlMsgId_PlayerLeft:
+            err = AuthSrvCtrl_HandlePlayerLeft(srv, conn, &msg->PlayerLeft);
             break;
         case CtrlMsgId_StartPlayerTransfer:
             err = AuthSrvCtrl_HandlerStartPlayerTransfer(srv, conn, &msg->StartPlayerTransfer);

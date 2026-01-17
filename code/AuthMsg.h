@@ -96,22 +96,32 @@ typedef struct AuthSrv_DeleteCharacter {
     uint16_t charname[20];
 } AuthSrv_DeleteCharacter;
 
+typedef struct AuthSrv_UpdateCharacterSettings {
+    uint16_t header;
+    uint32_t req_id;
+    uint32_t n_charname;
+    uint16_t charname[20];
+    uint32_t n_extended;
+    uint8_t  extended[64];
+} AuthSrv_UpdateCharacterSettings;
+
 typedef union AuthCliMsg {
-    uint16_t                    header;
-    uint8_t                     buffer[MSG_MAX_BUFFER_SIZE];
-    AuthSrv_ClientHeartbeat     heartbeat;
-    AuthSrv_ComputerHash        computer_hash;
-    AuthSrv_ComputerInfo        computer_info;
-    AuthSrv_AskServerResponse   ask_server_response;
-    AuthSrv_PortalAccountLogin  portal_account_login;
-    AuthSrv_HardwareInfo        hardware_info;
-    AuthSrv_SetPlayerStatus     set_player_status;
-    AuthSrv_ChangeCharacter     change_character;
-    AuthSrv_RequestGameInstance request_game_instance;
-    AuthSrv_Disconnect          disconnect;
-    AuthSrv_AcceptEula          accept_eula;
-    AuthSrv_AddAccessKey        add_access_key;
-    AuthSrv_DeleteCharacter     delete_character;
+    uint16_t                        header;
+    uint8_t                         buffer[MSG_MAX_BUFFER_SIZE];
+    AuthSrv_ClientHeartbeat         heartbeat;
+    AuthSrv_ComputerHash            computer_hash;
+    AuthSrv_ComputerInfo            computer_info;
+    AuthSrv_AskServerResponse       ask_server_response;
+    AuthSrv_PortalAccountLogin      portal_account_login;
+    AuthSrv_HardwareInfo            hardware_info;
+    AuthSrv_SetPlayerStatus         set_player_status;
+    AuthSrv_ChangeCharacter         change_character;
+    AuthSrv_RequestGameInstance     request_game_instance;
+    AuthSrv_Disconnect              disconnect;
+    AuthSrv_AcceptEula              accept_eula;
+    AuthSrv_AddAccessKey            add_access_key;
+    AuthSrv_DeleteCharacter         delete_character;
+    AuthSrv_UpdateCharacterSettings update_character_settings;
 } AuthCliMsg;
 
 typedef struct AuthSrv_SessionInfo {

@@ -20,6 +20,8 @@ GmPlayer* GameSrv_CreatePlayer(
 
 void GameSrv_RemovePlayer(GameSrv *srv, uint32_t player_id)
 {
+    int err;
+
     GmPlayer *player;
     if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
         log_warn("Tried to remove the player %zu which doesn't exist", player_id);
@@ -37,6 +39,10 @@ void GameSrv_RemovePlayer(GameSrv *srv, uint32_t player_id)
 
     if (player->agent_id != 0) {
         GameSrv_RemoveAgentById(srv, player->agent_id);
+    }
+
+    if ((err = CtrlConn_SendPlayerLeft(&srv->ctrl_conn, player->account_id, player->char_id)) != 0) {
+        log_error("Couldn't send 'PlayerLeft' on control channel");
     }
 
     GmIdFree(&srv->players.base, player_id, sizeof(srv->players.buffer[0]));
