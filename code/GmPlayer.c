@@ -41,6 +41,8 @@ void GameSrv_RemovePlayer(GameSrv *srv, uint32_t player_id)
         GameSrv_RemoveAgentById(srv, player->agent_id);
     }
 
+    GameSrv_BroadcastPlayerDestroy(srv, player_id);
+
     if ((err = CtrlConn_SendPlayerLeft(&srv->ctrl_conn, player->account_id, player->char_id)) != 0) {
         log_error("Couldn't send 'PlayerLeft' on control channel");
     }
@@ -274,7 +276,7 @@ void GameSrv_SendPlayerAttributes(GameSrv *srv, GameConnection *conn, GmPlayer *
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
 
-GameSrvMsg* GameSrv_BuildUpdatePlayerInfo(GameSrv *srv, GmPlayer *player, size_t *size)
+GameSrvMsg* GameSrv_BuildPlayerCreate(GameSrv *srv, GmPlayer *player, size_t *size)
 {
     Appearance appearance = {0};
     appearance.sex = player->character.sex;
@@ -286,8 +288,8 @@ GameSrvMsg* GameSrv_BuildUpdatePlayerInfo(GameSrv *srv, GmPlayer *player, size_t
     appearance.hair_style = player->character.hair_style;
     appearance.race = player->character.race;
 
-    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_UPDATE_AGENT_INFO);
-    GameSrv_UpdatePlayerInfo *msg = &buffer->update_player_info;
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_CREATE);
+    GameSrv_PlayerCreate *msg = &buffer->player_create;
     msg->player_id = player->player_id;
     msg->agent_id = player->agent_id;
     memcpy(&msg->appearance, &appearance, sizeof(msg->appearance));
@@ -301,18 +303,26 @@ GameSrvMsg* GameSrv_BuildUpdatePlayerInfo(GameSrv *srv, GmPlayer *player, size_t
     return buffer;
 }
 
-void GameSrv_SendUpdatePlayerInfo(GameSrv *srv, GameConnection *conn, GmPlayer *player)
+void GameSrv_SendPlayerCreate(GameSrv *srv, GameConnection *conn, GmPlayer *player)
 {
     size_t size;
-    GameSrvMsg *buffer = GameSrv_BuildUpdatePlayerInfo(srv, player, &size);
+    GameSrvMsg *buffer = GameSrv_BuildPlayerCreate(srv, player, &size);
     GameConnection_SendMessage(conn, buffer, size);
 }
 
-void GameSrv_BroadcastUpdatePlayerInfo(GameSrv *srv, GmPlayer *player)
+void GameSrv_BroadcastPlayerCreate(GameSrv *srv, GmPlayer *player)
 {
     size_t size;
-    GameSrvMsg *buffer = GameSrv_BuildUpdatePlayerInfo(srv, player, &size);
+    GameSrvMsg *buffer = GameSrv_BuildPlayerCreate(srv, player, &size);
     GameSrv_BroadcastMessage(srv, buffer, size);
+}
+
+void GameSrv_BroadcastPlayerDestroy(GameSrv *srv, uint32_t player_id)
+{
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PLAYER_DESTROY);
+    GameSrv_PlayerDestroy *msg = &buffer->player_destroy;
+    msg->player_id = player_id;
+    GameSrv_BroadcastMessage(srv, buffer, sizeof(*msg));
 }
 
 GameSrvMsg* GameSrv_BuildUpdatePlayerPartySize(GameSrv *srv, GmPlayer *player, size_t *size)

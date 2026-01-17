@@ -1459,7 +1459,7 @@ int GameSrv_HandleInstanceLoadRequestPlayers(GameSrv *srv, uint32_t player_id, G
     // GameSrv_SendPlayerTitles
     GameSrv_SendPlayerAttributes(srv, conn, player);
     GameSrv_SendAgentLoadTime(srv, conn, agent);
-    GameSrv_BroadcastUpdatePlayerInfo(srv, player);
+    GameSrv_BroadcastPlayerCreate(srv, player);
     GameSrv_SendPlayerProfession(srv, conn, player);
     // GAME_SMSG_TITLE_RANK_DISPLAY
 

@@ -59,8 +59,9 @@ void GameSrv_SendUpdatePvpUnlockedSkills(GameSrv *srv, GameConnection *conn, GmP
 void GameSrv_SendUpdatePveUnlockedSkills(GameSrv *srv, GameConnection *conn, GmPlayer *player);
 void GameSrv_SendPlayerAttributes(GameSrv *srv, GameConnection *conn, GmPlayer *player);
 GameSrvMsg* GameSrv_BuildUpdatePlayerInfo(GameSrv *srv, GmPlayer *player, size_t *size);
-void GameSrv_SendUpdatePlayerInfo(GameSrv *srv, GameConnection *conn, GmPlayer *player);
-void GameSrv_BroadcastUpdatePlayerInfo(GameSrv *srv, GmPlayer *player);
+void GameSrv_SendPlayerCreate(GameSrv *srv, GameConnection *conn, GmPlayer *player);
+void GameSrv_BroadcastPlayerCreate(GameSrv *srv, GmPlayer *player);
+void GameSrv_BroadcastPlayerDestroy(GameSrv *srv, uint32_t player_id);
 GameSrvMsg* GameSrv_BuildUpdatePlayerPartySize(GameSrv *srv, GmPlayer *player, size_t *size);
 void GameSrv_SendUpdatePlayerPartySize(GameSrv *srv, GameConnection *conn, GmPlayer *player);
 void GameSrv_BroadcastUpdatePlayerPartySize(GameSrv *srv, GmPlayer *player);

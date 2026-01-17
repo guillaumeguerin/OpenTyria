@@ -202,8 +202,8 @@
 #define GAME_SMSG_QUEST_UPDATE_NAME                     (GAME_SMSG_MASK | 0x0054) // 84
 #define GAME_SMSG_NPC_UPDATE_PROPERTIES                 (GAME_SMSG_MASK | 0x0056) // 86
 #define GAME_SMSG_NPC_UPDATE_MODEL                      (GAME_SMSG_MASK | 0x0057) // 87
-#define GAME_SMSG_PLAYER_UPDATE_AGENT_INFO              (GAME_SMSG_MASK | 0x0059) // 89
-#define GAME_SMSG_AGENT_DESTROY_PLAYER                  (GAME_SMSG_MASK | 0x005A) // 90
+#define GAME_SMSG_PLAYER_CREATE                         (GAME_SMSG_MASK | 0x0059) // 89
+#define GAME_SMSG_PLAYER_DESTROY                        (GAME_SMSG_MASK | 0x005A) // 90
 #define GAME_SMSG_CHAT_MESSAGE_CORE                     (GAME_SMSG_MASK | 0x005D) // 93
 #define GAME_SMSG_CHAT_MESSAGE_SERVER                   (GAME_SMSG_MASK | 0x005E) // 94
 #define GAME_SMSG_CHAT_MESSAGE_NPC                      (GAME_SMSG_MASK | 0x005F) // 95

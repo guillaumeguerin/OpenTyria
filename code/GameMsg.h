@@ -411,7 +411,7 @@ typedef struct GameSrv_CreateAgentMsg {
     uint16_t h0061;
 } GameSrv_CreateAgentMsg;
 
-typedef struct GameSrv_UpdatePlayerInfo {
+typedef struct GameSrv_PlayerCreate {
     uint16_t header;
     uint32_t player_id;
     uint32_t agent_id;
@@ -421,7 +421,12 @@ typedef struct GameSrv_UpdatePlayerInfo {
     uint32_t unk2;
     uint32_t name_len;
     uint16_t name_buf[32];
-} GameSrv_UpdatePlayerInfo;
+} GameSrv_PlayerCreate;
+
+typedef struct GameSrv_PlayerDestroy {
+    uint16_t header;
+    uint32_t player_id;
+} GameSrv_PlayerDestroy;
 
 typedef struct GameSrv_InitialAgentEffects {
     uint16_t header;
@@ -684,7 +689,8 @@ typedef union GameSrvMsg {
     GameSrv_UpdateAgentAttributes        update_agent_attributes;
     GameSrv_AgentLoadTime                agent_load_time;
     GameSrv_CreateAgentMsg               create_agent;
-    GameSrv_UpdatePlayerInfo             update_player_info;
+    GameSrv_PlayerCreate                 player_create;
+    GameSrv_PlayerDestroy                player_destroy;
     GameSrv_InitialAgentEffects          initial_agent_effects;
     GameSrv_AgentRemove                  agent_remove;
     GameSrv_UpdatePlayerAgent            update_player_agent;
