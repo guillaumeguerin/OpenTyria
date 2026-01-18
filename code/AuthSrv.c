@@ -604,6 +604,8 @@ int AuthSrv_HandlePortalAccountLogin(AuthSrv *srv, AuthConnection *conn, AuthCli
     uuid_dec_le(&user_id, msg->user_id);
     uuid_dec_le(&session_id, msg->session_id);
 
+    log_debug("User login user id: %U, session id: %U", &user_id, &session_id);
+
     DbSession session;
     if ((err = Db_GetSession(&srv->database, user_id, session_id, &session)) != 0) {
         AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_AUTH_ERROR);

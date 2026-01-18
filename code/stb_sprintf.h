@@ -578,6 +578,7 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
          char const *h;
          stbsp__uint32 l, n, cs;
          stbsp__uint64 n64;
+         GmUuid *uid;
 #ifndef STB_SPRINTF_NOFLOAT
          double fv;
 #endif
@@ -1142,6 +1143,20 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
          cs = l + (3 << 24);
          if (pr < 0)
             pr = 0;
+
+         goto scopy;
+
+      case 'U':
+         uid = va_arg(va, GmUuid*);
+         s = num + STBSP__NUMSZ - UUID_STRING_LEN - 1;
+         l = UUID_STRING_LEN;
+         uuid_snprint(s, UUID_STRING_LEN + 1, uid);
+         lead[0] = 0;
+         tail[0] = 0;
+         pr = 0;
+         dp = 0;
+         cs = 0;
+         goto scopy;
 
       scopy:
          // get fw=leading/trailing space, pr=leading zeros

@@ -57,9 +57,6 @@
 #include <mbedtls/bignum.h>
 #include <mbedtls/chacha20.h>
 
-#define STB_SPRINTF_IMPLEMENTATION
-#include "stb_sprintf.h"
-
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
@@ -77,6 +74,10 @@
 #include "GmUuid.h"
 #include "array.h"
 #include "slice.h"
+
+#define STB_SPRINTF_IMPLEMENTATION
+#include "stb_sprintf.h"
+
 #include "errors.h"
 
 #include "stream.h"
