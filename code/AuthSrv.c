@@ -689,29 +689,36 @@ int AuthSrv_HandleSetPlayerStatus(AuthConnection *conn, AuthCliMsg *msg)
     }
 }
 
-int AuthSrv_HandleChangePlayCharacter(AuthConnection *conn, AuthCliMsg *msg)
+int AuthSrv_HandleChangePlayCharacter(AuthSrv *srv, AuthConnection *conn, AuthSrv_ChangeCharacter *msg)
 {
+    int err;
     assert(msg->header == AUTH_CMSG_CHANGE_PLAY_CHARACTER);
 
     if (!conn->connected) {
-        AuthSrv_SendRequestResponse(conn, msg->change_character.req_id, GM_ERROR_DISCONNECTED);
+        AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_DISCONNECTED);
+        return ERR_OK;
+    }
+
+    array_clear(&conn->characters);
+    if ((err = Db_GetCharacters(&srv->database, conn->account_id, &conn->characters)) != 0) {
+        AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
         return ERR_OK;
     }
 
     DbCharacterArray characters = conn->characters;
     for (size_t idx = 0; idx < characters.len; ++idx) {
         DbCharacter *ch = &characters.ptr[idx];
-        if (ch->charname.len == msg->change_character.n_name &&
-            memcmp_u16(ch->charname.buf, msg->change_character.name, ch->charname.len) == 0)
+        if (ch->charname.len == msg->n_name &&
+            memcmp_u16(ch->charname.buf, msg->name, ch->charname.len) == 0)
         {
             log_debug("Updating selected charcter to index %zu", idx);
             conn->selected_character_idx = idx;
-            AuthSrv_SendRequestResponse(conn, msg->change_character.req_id, 0);
+            AuthSrv_SendRequestResponse(conn, msg->req_id, 0);
             return ERR_OK;
         }
     }
 
-    AuthSrv_SendRequestResponse(conn, msg->change_character.req_id, GM_ERROR_NETWORK_ERROR);
+    AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
     return ERR_OK;
 }
 
@@ -1335,7 +1342,7 @@ void AuthSrv_ProcessAuthConnectionEvent(AuthSrv *srv, AuthConnection *conn, Even
             err = AuthSrv_HandleSetPlayerStatus(conn, msg);
             break;
         case AUTH_CMSG_CHANGE_PLAY_CHARACTER:
-            err = AuthSrv_HandleChangePlayCharacter(conn, msg);
+            err = AuthSrv_HandleChangePlayCharacter(srv, conn, &msg->change_character);
             break;
         case AUTH_CMSG_REQUEST_GAME_INSTANCE:
             err = AuthSrv_HandleRequestGameInstance(srv,conn, msg);
