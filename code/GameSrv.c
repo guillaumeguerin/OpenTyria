@@ -856,6 +856,24 @@ void GameSrv_SendInitialPackets(GameSrv *srv, GameConnection *conn)
     GameSrv_SendInstanceLoadInfo(srv, conn, player);
 }
 
+void GameSrv_KillConnection(GameSrv *srv, GameConnection *conn)
+{
+    uint16_t player_id = conn->player_id;
+    log_info("Killing connection %04" PRIXPTR" (player: %" PRIX16 ")", conn->token, player_id);
+
+    // Killing the connection is a result of a miss-behavior in the protocol,
+    // so we don't try to cleanly shutdown the connection. We simply release
+    // the resource.
+    GameConnection_Free(conn);
+    stbds_hmdel(srv->connections, conn->token);
+
+    // After killing the connection, we just make sure we remove the player
+    // if the connection was associated to any players;
+    if (player_id != 0) {
+        GameSrv_RemovePlayer(srv, player_id);
+    }
+}
+
 void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 {
     int err;
@@ -868,9 +886,8 @@ void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 
         header = le16dec(input) & ~GAME_CMSG_MASK;
         if (ARRAY_SIZE(GAME_CMSG_FORMATS) <= header) {
-            IoSource_reset(&conn->source);
-            array_add(&srv->connections_to_remove, conn->token);
-            break;
+            GameSrv_KillConnection(srv, conn);
+            return;
         }
 
         MsgFormat format = GAME_CMSG_FORMATS[header];
@@ -885,8 +902,8 @@ void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 
             if (err != ERR_NOT_ENOUGH_DATA) {
                 log_warn("Received invalid message from client %04" PRIXPTR, conn->token);
-                IoSource_reset(&conn->source);
-                array_add(&srv->connections_to_remove, conn->token);
+                GameSrv_KillConnection(srv, conn);
+                return;
             }
 
             break;
@@ -901,7 +918,6 @@ void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 void GameSrv_PeerDisconnected(GameSrv *srv, GameConnection *conn)
 {
     GameSrv_GetMessages(srv, conn);
-    IoSource_reset(&conn->source);
 
     GamePlayerMsg *msg = array_push(&srv->messages, 1);
     msg->player_id = conn->player_id;
@@ -1288,9 +1304,6 @@ void GameSrvCtrl_HandleCompletePlayerTransfer(GameSrv *srv, CtrlMsg_CompletePlay
     }
 
     GameConnection_SendMessage(conn, buffer, sizeof(*msg2));
-
-    // @Cleanup: Actually remove the player / agent / etc. from this map
-    // GameSrv_HandleDisconnect
 }
 
 void GameSrvCtrl_StartPlayerTransfer(GameSrv *srv, GmPlayer *player)
@@ -1786,13 +1799,14 @@ int GameSrv_HandleCharCreationConfirm(GameSrv *srv, uint32_t player_id, GameSrv_
     return ERR_OK;
 }
 
-void GameSrv_RemoveConnection(GameSrv *srv, uintptr_t token)
+void GameSrv_CloseConnection(GameSrv *srv, uintptr_t token)
 {
     GameConnection *conn;
     if ((conn = GameSrv_GetConnection(srv, token)) != NULL) {
+        GameConnection_Shutdown(conn);
         GameConnection_Free(conn);
+        stbds_hmdel(srv->connections, token);
     }
-    stbds_hmdel(srv->connections, token);
 }
 
 int GameSrv_HandlePingRequest(GameSrv *srv, uint32_t player_id)
@@ -1816,13 +1830,11 @@ int GameSrv_HandlePingRequest(GameSrv *srv, uint32_t player_id)
     return ERR_OK;
 }
 
-void GameSrv_HandleDisconnect(GameSrv *srv, uint32_t player_id)
+int GameSrv_HandleDisconnect(GameSrv *srv, uint32_t player_id)
 {
-    GmPlayer *player;
-    if ((player = GameSrv_GetPlayer(srv, player_id)) != NULL) {
-        GameSrv_RemoveConnection(srv, player->conn_token);
-        GameSrv_RemovePlayer(srv, player_id);
-    }
+    log_info("GAME_CMSG_DISCONNECT");
+    GameSrv_RemovePlayer(srv, player_id);
+    return ERR_OK;
 }
 
 int GameSrv_ProcessPlayerMessage(GameSrv *srv, uint16_t player_id, GameCliMsg *msg)
@@ -1830,9 +1842,7 @@ int GameSrv_ProcessPlayerMessage(GameSrv *srv, uint16_t player_id, GameCliMsg *m
     int err = ERR_OK;
     switch (msg->header) {
     case GAME_CMSG_DISCONNECT:
-        GameSrv_HandleDisconnect(srv, player_id);
-        log_info("GAME_CMSG_DISCONNECT");
-        err = ERR_OK;
+        err = GameSrv_HandleDisconnect(srv, player_id);
         break;
     case GAME_CMSG_HEARTBEAT:
         break;
@@ -1962,7 +1972,7 @@ void GameSrv_Update(GameSrv *srv)
 
     for (size_t idx = 0; idx < srv->connections_to_remove.len; ++idx) {
         uintptr_t token = array_at(&srv->connections_to_remove, idx);
-        GameSrv_RemoveConnection(srv, token);
+        GameSrv_CloseConnection(srv, token);
     }
     array_clear(&srv->connections_to_remove);
 

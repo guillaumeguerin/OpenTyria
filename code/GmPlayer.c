@@ -28,14 +28,12 @@ void GameSrv_RemovePlayer(GameSrv *srv, uint32_t player_id)
         return;
     }
 
-    // Won't be accessible anymore.
-    player->player_id = 0;
+    GameSrv_CloseConnection(srv, player->conn_token);
+    player->conn_token = 0;
 
-    GameConnection *conn;
-    if ((conn = GameSrv_GetConnection(srv, player->conn_token)) != NULL) {
-        GameConnection_Shutdown(conn);
-        GameSrv_RemoveConnection(srv, player->conn_token);
-    }
+    // We remove the player id, ensuring we won't broadcast to this player
+    // without releasing the memory yet.
+    player->player_id = 0;
 
     if (player->agent_id != 0) {
         GameSrv_RemoveAgentById(srv, player->agent_id);
