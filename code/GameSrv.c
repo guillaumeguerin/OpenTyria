@@ -868,7 +868,7 @@ void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 
         header = le16dec(input) & ~GAME_CMSG_MASK;
         if (ARRAY_SIZE(GAME_CMSG_FORMATS) <= header) {
-            IoSource_free(&conn->source);
+            IoSource_reset(&conn->source);
             array_add(&srv->connections_to_remove, conn->token);
             break;
         }
@@ -877,15 +877,15 @@ void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 
         size_t consumed;
 
-        GamePlayerMsg *msg = array_push(&srv->player_messages, 1);
+        GamePlayerMsg *msg = array_push(&srv->messages, 1);
         msg->player_id = conn->player_id;
 
         if ((err = unpack_msg(format, &consumed, input, size, msg->msg.buffer, sizeof(msg->msg.buffer))) != 0) {
-            array_pop(&srv->player_messages);
+            array_pop(&srv->messages);
 
             if (err != ERR_NOT_ENOUGH_DATA) {
                 log_warn("Received invalid message from client %04" PRIXPTR, conn->token);
-                IoSource_free(&conn->source);
+                IoSource_reset(&conn->source);
                 array_add(&srv->connections_to_remove, conn->token);
             }
 
@@ -901,13 +901,11 @@ void GameSrv_GetMessages(GameSrv *srv, GameConnection *conn)
 void GameSrv_PeerDisconnected(GameSrv *srv, GameConnection *conn)
 {
     GameSrv_GetMessages(srv, conn);
-    IoSource_free(&conn->source);
-    array_add(&srv->connections_to_remove, conn->token);
+    IoSource_reset(&conn->source);
 
-    GmPlayer *player;
-    if ((player = GameSrv_GetPlayer(srv, conn->player_id)) != NULL) {
-        player->conn_token = 0;
-    }
+    GamePlayerMsg *msg = array_push(&srv->messages, 1);
+    msg->player_id = conn->player_id;
+    msg->msg.header = GAME_CMSG_DISCONNECT;
 }
 
 void GameSrv_ProcessGameEvent(GameSrv *srv, Event event)
@@ -1900,12 +1898,12 @@ void GameSrv_Update(GameSrv *srv)
         array_add(&srv->connections_with_event, event.token);
     }
 
-    GamePlayerMsgArray msgs = srv->player_messages;
+    GamePlayerMsgArray msgs = srv->messages;
     for (size_t idx = 0; idx < msgs.len; ++idx) {
         GamePlayerMsg *msg = &msgs.ptr[idx];
         GameSrv_ProcessPlayerMessage(srv, msg->player_id, &msg->msg);
     }
-    array_clear(&srv->player_messages);
+    array_clear(&srv->messages);
 
     size_t n_connections = stbds_hmlen(srv->connections);
     if (GAME_SRV_TIME_BETWEEN_PING_MS <= (current_time - srv->last_ping_request)) {

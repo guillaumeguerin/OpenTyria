@@ -63,7 +63,7 @@ typedef struct GameSrv {
     ArrayEvent               events;
     Mutex                    mtx;
     GmPlayerArray            players;
-    GamePlayerMsgArray       player_messages;
+    GamePlayerMsgArray       messages;
     int32_t                  current_instance_time;
     int64_t                  creation_instance_time;
     int64_t                  current_frame_time;
