@@ -1943,9 +1943,9 @@ void GameSrv_Update(GameSrv *srv)
     }
     array_clear(&srv->messages);
 
-    size_t n_connections = stbds_hmlen(srv->connections);
     if (GAME_SRV_TIME_BETWEEN_PING_MS <= (current_time - srv->last_ping_request)) {
         srv->last_ping_request = current_time;
+        size_t n_connections = stbds_hmlen(srv->connections);
         for (size_t idx = 0; idx < n_connections; ++idx) {
             GameConnection *conn = &srv->connections[idx].value;
             GameSrv_SendPing(srv, conn);
@@ -1956,6 +1956,7 @@ void GameSrv_Update(GameSrv *srv)
         GameSrv_WorldTick(srv);
     }
 
+    size_t n_connections = stbds_hmlen(srv->connections);
     for (size_t idx = 0; idx < n_connections; ++idx) {
         GameConnection *conn = &srv->connections[idx].value;
         if (array_empty(&conn->outgoing)) {
