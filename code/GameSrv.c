@@ -1795,6 +1795,27 @@ void GameSrv_RemoveConnection(GameSrv *srv, uintptr_t token)
     stbds_hmdel(srv->connections, token);
 }
 
+int GameSrv_HandlePingRequest(GameSrv *srv, uint32_t player_id)
+{
+    GmPlayer *player;
+    if ((player = GameSrv_GetPlayer(srv, player_id)) == NULL) {
+        log_error("GameSrv_GetPlayer failed");
+        return ERR_OK;
+    }
+
+    GameConnection *conn;
+    if ((conn = GameSrv_GetConnection(srv, player->conn_token)) == NULL) {
+        log_error("GameSrv_GetConnection failed");
+        return ERR_OK;
+    }
+
+    GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PING_REPLY);
+    GameSrv_PingReply *msg = &buffer->ping_reply;
+    msg->ping = 20;
+    GameConnection_SendMessage(conn, buffer, sizeof(*msg));
+    return ERR_OK;
+}
+
 void GameSrv_HandleDisconnect(GameSrv *srv, uint32_t player_id)
 {
     GmPlayer *player;
@@ -1813,7 +1834,12 @@ int GameSrv_ProcessPlayerMessage(GameSrv *srv, uint16_t player_id, GameCliMsg *m
         log_info("GAME_CMSG_DISCONNECT");
         err = ERR_OK;
         break;
+    case GAME_CMSG_HEARTBEAT:
+        break;
     case GAME_CMSG_PING_REPLY:
+        break;
+    case GAME_CMSG_PING_REQUEST:
+        err = GameSrv_HandlePingRequest(srv, player_id);
         break;
     case GAME_CMSG_INSTANCE_LOAD_REQUEST_SPAWN:
         err = GameSrv_HandleInstanceLoadRequestSpawn(srv, player_id);
