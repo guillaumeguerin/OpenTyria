@@ -1647,7 +1647,13 @@ int GameSrv_HandleCharCreationChangeProf(GameSrv *srv, uint32_t player_id, GameS
         *item = *item_def;
         item->item_id = item_id;
 
-        GmBag_SetItem(bag, item_slot, item_id);
+        if (bag->items[item_slot] == 0) {
+            GmBag_SetItem(bag, item_slot, item_id);
+        } else if (!GmBag_TryAddToBag(&player->bags.backpack, item_id)) {
+            log_info("Added item %u to backpack, because slot was already equipped", item_id);
+        } else {
+            log_error("Couldn't add item %u to user", item_id);
+        }
     }
 
     GameConnection *conn;

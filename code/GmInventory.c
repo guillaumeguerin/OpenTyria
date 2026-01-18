@@ -53,6 +53,17 @@ void GmBag_SetItem(GmBag *bag, size_t slot, uint32_t item_id)
     bag->items[slot] = item_id;
 }
 
+bool GmBag_TryAddToBag(GmBag *bag, uint32_t item_id)
+{
+    for (size_t idx = 0; idx < bag->slot_count; ++idx) {
+        if (bag->items[idx] != 0) {
+            bag->items[idx] = item_id;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool GmBag_IsVolatile(BagModelId model_id)
 {
     return model_id == BagModelId_UnclaimedItems;
