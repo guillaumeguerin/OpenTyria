@@ -38,5 +38,3 @@ are chosen, because it simpliefied the final solution.
 4. Use one of user1@example.com, user2@example.com, or user3@example.com to connect.
 
 ## Known issues
-
-1. After creating your character, you will need to close the game and restart it.

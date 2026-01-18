@@ -77,6 +77,8 @@ int GameSrv_Setup(GameSrv *srv, GameSrvSetupParams params)
 {
     int err;
 
+    assert(params.district.language != DistrictLanguage_Unknown);
+
     srv->server_id = params.server_id;
     srv->district = params.district;
     srv->ctrl_conn.peer_addr = params.ctrl_srv_addr;

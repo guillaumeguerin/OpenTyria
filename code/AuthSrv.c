@@ -742,6 +742,13 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
         return ERR_BAD_USER_DATA;
     }
 
+    // @Cleanup:
+    // `DistrictLanguage_Unknown` should means we use what is in DB, but
+    // we currently don't save this information. Falling back to default.
+    if (district.language == DistrictLanguage_Unknown) {
+        district.language = DistrictLanguage_Default;
+    }
+
     district.map_id = cast_u16(msg->map_id);
     district.district_number = msg->district;
 
