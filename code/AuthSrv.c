@@ -1344,7 +1344,7 @@ void AuthSrv_ProcessAuthConnectionEvent(AuthSrv *srv, AuthConnection *conn, Even
             err = AuthSrv_HandleClientHeartbeat(conn, msg);
             break;
         case AUTH_CMSG_DISCONNECT:
-            log_info("Received disconnect from %" PRIXPTR, conn->token);
+            log_info("Received disconnect from %04" PRIXPTR, conn->token);
             err = ERR_UNSUCCESSFUL;
             break;
         case AUTH_CMSG_ACCEPT_EULA:
