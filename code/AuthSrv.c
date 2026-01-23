@@ -410,6 +410,11 @@ void AuthSrv_CloseAuthConnection(AuthSrv *srv, AuthConnection *conn)
     IoSource_reset(&conn->source);
     array_clear(&conn->outgoing);
     array_add(&srv->objects_to_remove, conn->token);
+
+    // @Cleanup:
+    // This is almost certainly wrong. We shouldn't delete this if the player
+    // is still in a game srv. Otherwise, the player could reconnect and start
+    // playing in a second game server.
     AuthSrv_DelConnectedAccount(srv, conn->account_id);
 }
 
