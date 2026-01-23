@@ -41,6 +41,8 @@ GmAgent* GameSrv_GetAgentOrAbort(GameSrv *srv, uint32_t agent_id);
 void     GameSrv_RemoveAgentById(GameSrv *srv, uint32_t agent_id);
 GmAgent* GameSrv_GetAgentByPlayerId(GameSrv *srv, uint32_t player_id);
 
+void GameSrv_CancelAgentMovement(GmAgent *agent);
+
 void GameSrv_SendAgentHealthEnergy(GameSrv *srv, GameConnection *conn, GmAgent *agent);
 GameSrvMsg* GameSrv_BuildAgentLevelMsg(GameSrv *srv, GmAgent *agent, size_t *size);
 void GameSrv_SendAgentLevel(GameSrv *srv, GameConnection *conn, GmAgent *agent);

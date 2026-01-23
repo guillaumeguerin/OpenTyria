@@ -70,6 +70,12 @@ GmAgent* GameSrv_GetAgentByPlayerId(GameSrv *srv, uint32_t player_id)
     return agent;
 }
 
+void GameSrv_CancelAgentMovement(GmAgent *agent)
+{
+    agent->destination = agent->position;
+    agent->speed = 0.f;
+}
+
 void GameSrv_SendAgentHealthEnergy(GameSrv *srv, GameConnection *conn, GmAgent *agent)
 {
     {
@@ -418,11 +424,8 @@ int GameSrv_HandleCancelMovement(GameSrv *srv, uint16_t player_id)
         return ERR_SERVER_ERROR;
     }
 
-    agent->destination.x = agent->position.x;
-    agent->destination.y = agent->position.y;
-    agent->speed = 0.f;
-
     GameSrv_WorldTick(srv);
+    GameSrv_CancelAgentMovement(agent);
     GameSrv_BroadcastAgentStopMoving(srv, agent->agent_id);
     return ERR_OK;
 }

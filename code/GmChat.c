@@ -147,6 +147,8 @@ int GameSrv_HandleChatCommand(GameSrv *srv, uint16_t player_id, slice_uint16_t m
     if (slice_u16_equals_ascii_lit(msg, "stuck", sizeof("stuck") - 1)) {
         GmAgent *agent;
         if ((agent = GameSrv_GetAgentByPlayerId(srv, player_id)) != NULL) {
+            GameSrv_WorldTick(srv);
+            GameSrv_CancelAgentMovement(agent);
             GameSrv_BroadcastAgentPosition(srv, agent);
         } else {
             log_error("Player id %u doesn't have an agent", player_id);
