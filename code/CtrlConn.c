@@ -25,7 +25,7 @@ int CtrlConn_FlushOutgoingBuffer(CtrlConnection *conn)
             return ERR_OK;
         }
 
-        log_error("Failed to send %zu bytes, err: %d", bytes_sent, err);
+        log_error("Failed to send %zu bytes, err: %d", conn->outgoing.len, err);
         return ERR_UNSUCCESSFUL;
     }
 
