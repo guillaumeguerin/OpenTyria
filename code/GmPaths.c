@@ -882,7 +882,8 @@ void PathCreateWaypoints(
 
 bool PathFinding(GmPathContext *context, GmPos src_pos, GmPos dst_pos, WaypointArray *waypoints)
 {
-    const float MAX_COST = INFINITY;
+    // 10,000 is the ingame constant.
+    const float MAX_COST = 10000;
 
     PathTrapezoid *src_trap, *dst_trap;
 

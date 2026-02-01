@@ -12,26 +12,28 @@ typedef enum AgentType {
 #define CHAR_CLASS_MONSTER_BASE 0x20000000
 
 typedef struct GmAgent {
-    GmIdHeader IdHeader;
-    uint32_t   agent_id;
-    GmPos      position;
-    Vec2f      direction;
-    GmPos      destination;
-    float      rotation;
-    uint32_t   model_id;
-    uint32_t   load_time;
-    uint32_t   health_max;
-    uint32_t   energy_max;
-    float      health_per_sec;
-    float      energy_per_sec;
-    float      health;
-    float      energy;
-    AgentType  agent_type;
-    float      speed_base;
-    float      speed;
-    uint32_t   level;
-    uint32_t   effects;
-    uint32_t   player_team_token;
+    GmIdHeader    IdHeader;
+    uint32_t      agent_id;
+    GmPos         position;
+    Vec2f         direction;
+    GmPos         destination;
+    float         rotation;
+    uint32_t      model_id;
+    uint32_t      load_time;
+    uint32_t      health_max;
+    uint32_t      energy_max;
+    float         health_per_sec;
+    float         energy_per_sec;
+    float         health;
+    float         energy;
+    AgentType     agent_type;
+    float         speed_base;
+    float         speed;
+    uint32_t      level;
+    uint32_t      effects;
+    uint32_t      player_team_token;
+    size_t        waypoint_idx;
+    WaypointArray waypoints;
 } GmAgent;
 typedef GmIdTable(GmAgent) GmAgentArray;
 

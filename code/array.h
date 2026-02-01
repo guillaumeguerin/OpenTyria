@@ -29,6 +29,7 @@ typedef array(uintptr_t) array_uintptr_t;
 
 #define array_init(a)           _array_init(&(a)->base)
 #define array_free(a)           _array_free(&(a)->base);
+#define array_reset(a)          _array_reset(&(a)->base);
 
 #define array_reserve(a, s)     _array_reserve(&(a)->base, (s), sizeof(*(a)->ptr))
 #define array_resize(a, s)      _array_resize(&(a)->base, (s), sizeof(*(a)->ptr))

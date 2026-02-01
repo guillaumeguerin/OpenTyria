@@ -31,21 +31,22 @@ GmAgent* GameSrv_GetAgent(GameSrv *srv, uint32_t agent_id)
 
 GmAgent* GameSrv_GetAgentOrAbort(GameSrv *srv, uint32_t agent_id)
 {
-    GmAgent *result;
-    if ((result = GameSrv_GetAgent(srv, agent_id)) == NULL) {
+    GmAgent *agent;
+    if ((agent = GameSrv_GetAgent(srv, agent_id)) == NULL) {
         abort();
     }
-    return result;
+    return agent;
 }
 
 void GameSrv_RemoveAgentById(GameSrv *srv, uint32_t agent_id)
 {
-    GmAgent *result;
-    if ((result = GameSrv_GetAgent(srv, agent_id)) == NULL) {
+    GmAgent *agent;
+    if ((agent = GameSrv_GetAgent(srv, agent_id)) == NULL) {
         return;
     }
 
-    result->agent_id = 0;
+    agent->agent_id = 0;
+    array_reset(&agent->waypoints);
     GmIdFree(&srv->agents.base, agent_id, sizeof(srv->agents.buffer[0]));
 
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_WORLD_REMOVE_AGENT);
@@ -329,56 +330,6 @@ void GameSrv_SendWorldAgents(GameSrv *srv, GameConnection *conn, GmAgent *player
     }
 }
 
-void GameSrv_WorldTick(GameSrv *srv)
-{
-    assert(srv->last_world_tick <= srv->current_frame_time);
-    if (srv->current_frame_time <= srv->last_world_tick) {
-        return;
-    }
-
-    int64_t delta_time = srv->current_frame_time - srv->last_world_tick;
-    float delta = (float)delta_time / 1000.f;
-
-    GmAgentArray agents = srv->agents;
-    for (size_t idx = 0; idx < agents.size; ++idx) {
-        GmAgent *agent = &agents.buffer[idx];
-        if (agent->agent_id != idx) {
-            continue;
-        }
-
-        if (agent->speed != 0.f) {
-            float dist = delta * agent->speed;
-            float dx = agent->direction.x * dist;
-            float dy = agent->direction.y * dist;
-
-            // Prevent overrunning the target position.
-            float max_dx = agent->destination.x - agent->position.x;
-            float max_dy = agent->destination.y - agent->position.y;
-
-            if (fabsf(max_dx) < fabsf(dx) || fabsf(max_dy) < fabsf(dy)) {
-                agent->position = agent->destination;
-
-                agent->speed = 0.f;
-                agent->destination.x = 0.f;
-                agent->destination.y = 0.f;
-            } else {
-                agent->position.x += dx;
-                agent->position.y += dy;
-            }
-        }
-
-        float health_diff = delta * agent->health_per_sec;
-        agent->health = clampf(agent->health + health_diff, 0.f, 1.f);
-        // @TODO: Check if the agent is dead!!!
-
-        float energy_diff = delta * agent->energy_per_sec;
-        agent->energy = clampf(agent->energy + energy_diff, 0.f, 1.f);
-    }
-
-    GameSrv_BroadcastWorldSimulationTick(srv, (uint32_t) delta_time);
-    srv->last_world_tick = srv->current_frame_time;
-}
-
 void GameSrv_BroadcastAgentMoveToPoint(GameSrv *srv, GmAgent *agent)
 {
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_AGENT_MOVE_TO_POINT);
@@ -386,10 +337,26 @@ void GameSrv_BroadcastAgentMoveToPoint(GameSrv *srv, GmAgent *agent)
     msg->agent_id = agent->agent_id;
     msg->dest.x = agent->destination.x;
     msg->dest.y = agent->destination.y;
-    msg->plane = 0;
-    msg->current_plane = 0;
+    msg->plane = agent->destination.plane;
+    msg->current_plane = agent->position.plane;
 
     GameSrv_BroadcastMessage(srv, buffer, sizeof(*msg));
+}
+
+void GameSrv_UpdateAgentDestination(GameSrv *srv, GmAgent *agent, GmPos destination)
+{
+    GameSrv_WorldTick(srv);
+
+    agent->destination = destination;
+    float dx = destination.x - agent->position.x;
+    float dy = destination.y - agent->position.y;
+    float norm = sqrtf(dx * dx + dy * dy);
+    agent->direction.x = dx / norm;
+    agent->direction.y = dy / norm;
+    agent->rotation = atan2f(agent->direction.y, agent->direction.x);
+
+    GameSrv_BroadcastAgentMoveToPoint(srv, agent);
+    // GameSrv_BroadcastAgentRotation(srv, agent);
 }
 
 int GameSrv_HandleMoveToCoord(GameSrv *srv, uint16_t player_id, GameSrv_MoveToCoord *msg)
@@ -400,20 +367,95 @@ int GameSrv_HandleMoveToCoord(GameSrv *srv, uint16_t player_id, GameSrv_MoveToCo
         return ERR_SERVER_ERROR;
     }
 
-    agent->destination.v2 = msg->pos;
-    agent->destination.plane = (uint16_t) msg->plane;
-    agent->speed = agent->speed_base;
+    GmPos dest = {0};
+    dest.v2 = msg->pos;
+    dest.plane = (uint16_t) msg->plane;
 
-    float dx = agent->destination.x - agent->position.x;
-    float dy = agent->destination.y - agent->position.y;
-    float norm = sqrtf(dx * dx + dy * dy);
+    array_clear(&agent->waypoints);
+    agent->waypoint_idx = 0;
+    if (PathFinding(&srv->map_context.path, agent->position, dest, &agent->waypoints)) {
+        if (0 < agent->waypoints.len) {
+            dest = agent->waypoints.ptr[agent->waypoint_idx++].pos;
+            agent->speed = agent->speed_base;
+            GameSrv_UpdateAgentDestination(srv, agent, dest);
+        }
+    } else {
+        log_warn("PathFinding failed");
+        GameSrv_WorldTick(srv);
+        GameSrv_CancelAgentMovement(agent);
+        GameSrv_BroadcastAgentPosition(srv, agent);
+    }
 
-    agent->direction.x = dx / norm;
-    agent->direction.y = dy / norm;
-    agent->rotation = atan2f(agent->direction.y, agent->direction.x);
-
-    GameSrv_BroadcastAgentMoveToPoint(srv, agent);
     return ERR_OK;
+}
+
+void GameSrv_UpdateAgentMovement(GameSrv *srv, GmAgent *agent, float delta)
+{
+    if (agent->speed == 0.f) {
+        return;
+    }
+
+    float dist = delta * agent->speed;
+    float dist_to_dest = Vec2f_Dist2(agent->position.v2, agent->destination.v2);
+
+    if (dist_to_dest <= dist) {
+        dist -= dist_to_dest;
+
+        agent->position = agent->destination;
+        if (agent->waypoint_idx < agent->waypoints.len) {
+            GmPos next_pos = agent->waypoints.ptr[agent->waypoint_idx++].pos;
+            GameSrv_UpdateAgentDestination(srv, agent, next_pos);
+        } else {
+            dist = 0.f;
+        }
+    }
+
+    if (0.f < dist) {
+        float dx = agent->direction.x * dist;
+        float dy = agent->direction.y * dist;
+        agent->position.x += dx;
+        agent->position.y += dy;
+    }
+
+    if ((agent->position.plane == agent->destination.plane) &&
+        Vec2fEqual(agent->position.v2, agent->destination.v2))
+    {
+        agent->destination = (GmPos) {0};
+        agent->speed = 0.f;
+        agent->waypoint_idx = 0;
+        array_clear(&agent->waypoints);
+    }
+}
+
+void GameSrv_WorldTick(GameSrv *srv)
+{
+    assert(srv->last_world_tick <= srv->current_frame_time);
+    if (srv->current_frame_time <= srv->last_world_tick) {
+        return;
+    }
+
+    int64_t delta_time = srv->current_frame_time - srv->last_world_tick;
+    float delta = (float)delta_time / 1000.f;
+
+    GameSrv_BroadcastWorldSimulationTick(srv, (uint32_t) delta_time);
+    srv->last_world_tick = srv->current_frame_time;
+
+    GmAgentArray agents = srv->agents;
+    for (size_t idx = 0; idx < agents.size; ++idx) {
+        GmAgent *agent = &agents.buffer[idx];
+        if (agent->agent_id != idx) {
+            continue;
+        }
+
+        GameSrv_UpdateAgentMovement(srv, agent, delta);
+
+        float health_diff = delta * agent->health_per_sec;
+        agent->health = clampf(agent->health + health_diff, 0.f, 1.f);
+        // @TODO: Check if the agent is dead!!!
+
+        float energy_diff = delta * agent->energy_per_sec;
+        agent->energy = clampf(agent->energy + energy_diff, 0.f, 1.f);
+    }
 }
 
 int GameSrv_HandleCancelMovement(GameSrv *srv, uint16_t player_id)
