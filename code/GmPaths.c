@@ -355,6 +355,9 @@ void PathVisitBellow(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_
 
 // Find the intersection point of two lines if it exist. `t1` and `t2` are set
 // such that: `start1 + t1 * dir1 = start2 + t2 * dir2`.
+// If the two lines intersect, t1 & t2 would be between between 0 and 1, but if
+// the intersection if on the continuation of the line, t1 & t2 could be outside
+// the [0, 1] range.
 bool FindIntersectionPoint(Vec2f start1, Vec2f dir1, Vec2f start2, Vec2f dir2, float *t1, float *t2)
 {
     float d = Vec2fCross(dir1, dir2);
