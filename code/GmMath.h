@@ -44,7 +44,7 @@ float Vec2fDist(Vec2f v1, Vec2f v2)
 
 Vec2f Vec2fDiv(Vec2f vec, float scallar)
 {
-    return (Vec2f) { vec.x / scallar, vec.x / scallar };
+    return (Vec2f) { vec.x / scallar, vec.y / scallar };
 }
 
 bool Vec2fIsZero(Vec2f vec)
