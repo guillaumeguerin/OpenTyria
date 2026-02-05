@@ -612,10 +612,10 @@ void PathBuildAddWaypointAndReduce(PathBuildHelper *helper, PathFindPoint new_po
             Vec2f to_point = Vec2fSub(new_point.pos.v2, from_pos);
             FindIntersectionPoint(step.pos, step.dir, from_pos, to_point, &t, &s);
 
-            if ( -0.01f <= t ) {
-                best_pos = step.pos;
-            } else if (1.01 < t) {
+            if (1.01f < t) {
                 best_pos = Vec2fAdd(step.pos, step.dir);
+            } else if (t < -0.01f) {
+                best_pos = step.pos;
             } else {
                 best_pos.x = step.pos.x + (t * step.dir.x);
                 best_pos.y = step.pos.y + (t * step.dir.y);
