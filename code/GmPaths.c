@@ -1,5 +1,13 @@
 #pragma once
 
+#define ENABLE_PATH_TRACING 0
+
+#if ENABLE_PATH_TRACING
+#define PathTrace(fmt, ...) fprintf(stdout, fmt, __VA_ARGS__)
+#else
+#define PathTrace(fmt, ...)
+#endif
+
 PathTrapezoid* PathFindTrapezoid(GmPathContext *context, GmPos pos)
 {
     ArrayPathPlane *planes = &context->static_data.planes;
@@ -163,6 +171,8 @@ void PathAddNode(
     float current_cost,
     float estimated_cost)
 {
+    PathTrace("astart_add_node: (%.04f, %.04f, %d), trap: %u, cost: %.04f, estimated_cost: %.04f\n", pos.x, pos.y, pos.plane, trap->trap_id, current_cost, estimated_cost);
+
     PathFindNode *pathNode = &array_at(&context->nodes, trap->trap_id);
     pathNode->closed = false;
     pathNode->cost_to_node = current_cost;
@@ -274,6 +284,15 @@ void FindPointOnNextTrap(float min_left_x, float max_right_x, float next_y, Vec2
 {
     float percent = -1.f;
 
+    PathTrace(
+        "find_point_on_next_trap: lx: %.04f, rx: %.04f, next_y: %.04f, current pos: (%.04f, %.04f), dst pos: (%.04f, %.04f)\n",
+        min_left_x,
+        max_right_x,
+        next_y,
+        src_pos.x, src_pos.y,
+        dst_pos.x, dst_pos.y
+    );
+
     if (src_pos.y != dst_pos.y)
     {
         float divisor = PathReciproc(dst_pos.y - src_pos.y);
@@ -298,6 +317,7 @@ void FindPointOnNextTrap(float min_left_x, float max_right_x, float next_y, Vec2
 
 void PathVisitTrap(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, GmPos cross_pos, float max_cost)
 {
+    PathTrace("visit_trapezoid: (%.04f, %.04f, %d)\n", cross_pos.x, cross_pos.y, cross_pos.plane);
     float dist_to_trap = PathVec2fDist(curr_node->point.pos.v2, cross_pos.v2);
     float cost_to_trap = curr_node->cost_to_node + dist_to_trap;
 
@@ -333,6 +353,7 @@ void PathVisitTrap(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_po
 
 void PathVisitAbove(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, float max_cost)
 {
+    PathTrace("visit_trap_above\n");
     PathTrapezoid *trap = curr_node->point.trap;
     float xl = fmaxf(neighbor->xbl, trap->xtl);
     float xr = fminf(neighbor->xbr, trap->xtr);
@@ -344,6 +365,7 @@ void PathVisitAbove(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_p
 
 void PathVisitBellow(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, PathTrapezoid *neighbor, float max_cost)
 {
+    PathTrace("visit_trap_bellow\n");
     PathTrapezoid *trap = curr_node->point.trap;
     float xl = fmaxf(neighbor->xtl, trap->xbl);
     float xr = fminf(neighbor->xtr, trap->xbr);
@@ -405,6 +427,7 @@ void PickNextPoint(Vec2f point1, Vec2f point2, Vec2f cur_pos, Vec2f dst_pos, Vec
 
 void PathVisitPortalLeft(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, uint16_t portal_id, float max_cost)
 {
+    PathTrace("visit_portal_left portal id: %u\n", portal_id);
     ArrayPortal *portals = &array_at(&context->static_data.planes, curr_node->point.pos.plane).portals;
     Portal *portal = &array_at(portals, portal_id);
 
@@ -459,6 +482,7 @@ void PathVisitPortalLeft(GmPathContext *context, PathFindNode *curr_node, Vec2f 
 
 void PathVisitPortalRight(GmPathContext *context, PathFindNode *curr_node, Vec2f dst_pos, uint16_t portal_id, float max_cost)
 {
+    PathTrace("visit_portal_right portal id: %u\n", portal_id);
     ArrayPortal *portals = &array_at(&context->static_data.planes, curr_node->point.pos.plane).portals;
     Portal *portal = &array_at(portals, portal_id);
 
@@ -568,6 +592,13 @@ float PathVec2fPreciseCross(Vec2f v1, Vec2f v2)
 
 void PathBuildAddWaypointAndReduce(PathBuildHelper *helper, PathFindPoint new_point, Vec2f from_pos)
 {
+    PathTrace(
+        "path_build_add_waypoint_and_reduce: new: %.04f, %.04f, 0, trap: %u, from: %.04f, %.04f\n",
+        new_point.pos.x, new_point.pos.y,
+        new_point.trap->trap_id,
+        from_pos.x, from_pos.y
+    );
+
     PathBuildStepArray *steps = &helper->context->steps;
     WaypointArray *waypoints = helper->waypoints;
 
@@ -630,6 +661,13 @@ void PathBuildAddWaypointAndReduce(PathBuildHelper *helper, PathFindPoint new_po
 
 void PathBuildAddWaypoint(PathBuildHelper *helper, Vec2f left, Vec2f right, PathFindNode **node)
 {
+    PathTrace(
+        "path_build_add_waypoint: left: %.04f, %.04f, right: %.04f, %.04f, current_trap_id: %u\n",
+        left.x, left.y,
+        right.x, right.y,
+        (*node)->point.trap->trap_id
+    );
+
     PathFindBound *bound_used;
     if (Vec2fEqual(helper->left_bound.point.pos.v2, left)) {
         bound_used = &helper->left_bound;
@@ -669,6 +707,15 @@ void PathBuildAddWaypoint(PathBuildHelper *helper, Vec2f left, Vec2f right, Path
 
 void PathBuildProcessNext(PathBuildHelper *helper, Vec2f left, Vec2f right, PathTrapezoid *next_trap, PathFindNode **node)
 {
+    PathTrace(
+        "path_build_process_next: left: %.04f, %.04f, right: %.04f, %.04f, current_trap_id: %u, next_trap_id: %u\n",
+        left.x, left.y,
+        right.x, right.y,
+        (*node)->point.trap->trap_id,
+        next_trap->trap_id
+    );
+
+
     Vec2f to_left = Vec2fSub(left, helper->curr_start_point.pos.v2);
     Vec2f to_right = Vec2fSub(right, helper->curr_start_point.pos.v2);
 
@@ -711,6 +758,12 @@ void PathBuildProcessNext(PathBuildHelper *helper, Vec2f left, Vec2f right, Path
 
 bool PathAddLast(PathBuildHelper *helper, PathFindNode **node, PathFindPoint new_point)
 {
+    PathTrace(
+        "path_add_last: current_trap_id: %u, dst: %.04f, %.04f, %d\n",
+        (*node)->point.trap->trap_id,
+        new_point.pos.x, new_point.pos.y, new_point.pos.plane
+    );
+
     Vec2f to_new_point = Vec2fSub(new_point.pos.v2, helper->curr_start_point.pos.v2);
     if (0 <= PathVec2fPreciseCross(to_new_point, helper->left_bound.vec)) {
         if (PathVec2fPreciseCross(to_new_point, helper->right_bound.vec) <= 0) {
@@ -772,6 +825,14 @@ void PathCreateWaypoints(
     WaypointArray *waypoints)
 {
     const int MAX_LOOP = 0xBB8;
+
+#if ENABLE_PATH_TRACING
+    PathFindNode *it = &array_at(&context->nodes, src_point.trap->trap_id);
+    while (it != NULL) {
+        PathTrace("Node %.04f, %.04f, %d\n", it->point.pos.x, it->point.pos.y, it->point.pos.plane);
+        it = it->next;
+    }
+#endif
 
     PathBuildHelper helper = {0};
     helper.context = context;
@@ -884,6 +945,7 @@ bool PathFinding(GmPathContext *context, GmPos src_pos, GmPos dst_pos, WaypointA
 {
     // 10,000 is the ingame constant.
     const float MAX_COST = 10000;
+    PathTrace("PathFindImpl (%f, %f, %d) -> (%f, %f, %d), max_cost: %.04f\n", src_pos.x, src_pos.y, src_pos.plane, dst_pos.x, dst_pos.y, dst_pos.plane, MAX_COST);
 
     PathTrapezoid *src_trap, *dst_trap;
 
@@ -929,6 +991,12 @@ bool PathFinding(GmPathContext *context, GmPos src_pos, GmPos dst_pos, WaypointA
             };
 
             PathCreateWaypoints(context, src_point, dst_point, waypoints);
+        #if ENABLE_PATH_TRACING
+            for (size_t idx = 0; idx < waypoints->len; ++idx) {
+                GmPos pos = waypoints->ptr[idx].pos;
+                PathTrace("res: %zu, %.4f, %.4f, %d\n", idx, pos.x, pos.y, pos.plane);
+            }
+        #endif
             return true;
         }
 
