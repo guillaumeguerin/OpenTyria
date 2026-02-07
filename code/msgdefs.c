@@ -587,14 +587,11 @@ MsgField AUTH_SMSG_0034[1] = {
     {TYPE_MSG_HEADER, 34},
 };
 
-MsgField AUTH_SMSG_0035[7] = {
+MsgField AUTH_SMSG_0035[4] = {
     {TYPE_MSG_HEADER, 35},
     {TYPE_DWORD, 0},
     {TYPE_DWORD, 0},
     {TYPE_BLOB, 16},
-    {TYPE_BLOB, 16},
-    {TYPE_BLOB, 16},
-    {TYPE_STRING_16, 16},
 };
 
 MsgField AUTH_SMSG_0036[1] = {
@@ -2505,7 +2502,7 @@ MsgField GAME_SMSG_0114[5] = {
     {TYPE_DWORD, 0},
 };
 
-MsgField GAME_SMSG_0115[9] = {
+MsgField GAME_SMSG_0115[10] = {
     {TYPE_MSG_HEADER, 115},
     {TYPE_WORD, 0},
     {TYPE_BYTE, 0},
@@ -2513,6 +2510,7 @@ MsgField GAME_SMSG_0115[9] = {
     {TYPE_BYTE, 0},
     {TYPE_DWORD, 0},
     {TYPE_DWORD, 0},
+    {TYPE_ARRAY_32, 8},
     {TYPE_BYTE, 0},
     {TYPE_BYTE, 0},
 };
@@ -5141,7 +5139,7 @@ MsgFormat AUTH_SMSG_FORMATS[39] = {
     {32,  6,  AUTH_SMSG_0032, 54},
     {33,  6,  AUTH_SMSG_0033, 54},
     {34,  1,  AUTH_SMSG_0034, 2},
-    {35,  7,  AUTH_SMSG_0035, 94},
+    {35,  4,  AUTH_SMSG_0035, 26},
     {36,  1,  AUTH_SMSG_0036, 2},
     {37,  1,  AUTH_SMSG_0037, 2},
     {38,  3,  AUTH_SMSG_0038, 10},
@@ -5462,7 +5460,7 @@ MsgFormat GAME_SMSG_FORMATS[487] = {
     {112, 2,  GAME_SMSG_0112, 3},
     {113, 2,  GAME_SMSG_0113, 6},
     {114, 5,  GAME_SMSG_0114, 16},
-    {115, 9,  GAME_SMSG_0115, 17},
+    {115, 10, GAME_SMSG_0115, 53},
     {116, 21, GAME_SMSG_0116, 129},
     {117, 2,  GAME_SMSG_0117, 6},
     {118, 2,  GAME_SMSG_0118, 4},
