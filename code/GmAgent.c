@@ -347,6 +347,7 @@ void GameSrv_UpdateAgentDestination(GameSrv *srv, GmAgent *agent, GmPos destinat
 {
     GameSrv_WorldTick(srv);
 
+    agent->speed = agent->speed_base;
     agent->destination = destination;
     float dx = destination.x - agent->position.x;
     float dy = destination.y - agent->position.y;
@@ -376,7 +377,6 @@ int GameSrv_HandleMoveToCoord(GameSrv *srv, uint16_t player_id, GameSrv_MoveToCo
     if (PathFinding(&srv->map_context.path, agent->position, dest, &agent->waypoints)) {
         if (0 < agent->waypoints.len) {
             dest = agent->waypoints.ptr[agent->waypoint_idx++].pos;
-            agent->speed = agent->speed_base;
             GameSrv_UpdateAgentDestination(srv, agent, dest);
         }
     } else {
