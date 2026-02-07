@@ -757,6 +757,9 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
     district.map_id = cast_u16(msg->map_id);
     district.district_number = msg->district;
 
+    // @Cleanup: We don't have a good support to find the right server right now.
+    district.district_number = 0;
+
     if (conn->characters.len != 0 && !(conn->selected_character_idx < conn->characters.len)) {
         log_error("Client tried to join a server without a selected character");
         AuthSrv_SendRequestResponse(conn, msg->req_id, GM_ERROR_NETWORK_ERROR);
