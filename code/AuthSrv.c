@@ -799,14 +799,15 @@ int AuthSrv_HandleRequestGameInstance(AuthSrv *srv, AuthConnection *conn, AuthCl
     uint32_t player_token = random_uint32(&srv->random);
 
     GameSrvMetadata *metadata = &srv->games[idx];
+    connected->current_server_id = metadata->server_id;
+    connected->current_player_id = player_token;
+
     if (metadata->ctrl_conn == 0) {
         AuthTransfer *transfer = array_push(&metadata->pending_transfers, 1);
         transfer->type = AuthTransferType_Auth;
         transfer->auth.auth_conn_token = conn->token;
         transfer->auth.req_id = msg->req_id;
         transfer->auth.player_token = player_token;
-        connected->current_server_id = metadata->server_id;
-        connected->current_player_id = player_token;
         return ERR_OK;
     }
 
