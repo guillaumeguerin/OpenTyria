@@ -1421,7 +1421,7 @@ int GameSrv_HandleInstanceLoadRequestSpawn(GameSrv *srv, uint32_t player_id)
 
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_INSTANCE_LOAD_SPAWN_POINT);
     GameSrv_SpawnPoint *msg = &buffer->spawn_point;
-    msg->map_file_id = 0x345CC; // Kaineng 0x265F7
+    msg->map_file_id = srv->map_static_config->map_file_id;
     msg->position.x = agent->position.x;
     msg->position.y = agent->position.y;
     msg->plane = agent->position.plane;
