@@ -1674,7 +1674,7 @@ int GameSrv_HandleCharCreationChangeProf(GameSrv *srv, uint32_t player_id, GameS
         return ERR_OK;
     }
 
-    GameSrv_SendUpdatePveUnlockedSkills(srv, conn, player);
+    GameSrv_SendUpdateUnlockedSkills(srv, conn, player);
     GameSrv_SendPlayerProfession(srv, conn, player);
     GameSrv_SendBagItems(srv, conn, &player->bags.equipped_items);
     return ERR_OK;
@@ -1720,6 +1720,10 @@ int GameSrv_HandleCharCreationConfirm(GameSrv *srv, uint32_t player_id, GameSrv_
     character.primary_profession = cast_u8(app.primary_profession);
     // @Cleanup: Add the unlocked profession and unlocked map
     character.unlocked_professions = 1 << app.primary_profession;
+
+    // @Cleanup: For testing
+    memset(&character.unlocked_skills, 0xFF, sizeof(character.unlocked_skills));
+    memset(&character.unlocked_maps, 0xFF, sizeof(character.unlocked_maps));
 
     GmBag *bag = &player->bags.equipped_items;
     assert(EquippedItemSlot_Count <= bag->slot_count);

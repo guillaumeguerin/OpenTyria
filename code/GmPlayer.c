@@ -172,6 +172,8 @@ void GameSrv_SendSkillsAndAttributes(GameSrv *srv, GameConnection *conn, GmPlaye
     GameSrv_SendPlayerProfession(srv, conn, player);
     GameSrv_SendUnlockedProfessions(srv, conn, player);
     GameSrv_SendSkillbarUpdate(srv, conn, player);
+    // GameSrv_SendCartographyData
+    GameSrv_SendUpdateUnlockedSkills(srv, conn, player);
 }
 
 void GameSrv_SendPlayerHealthEnergy(GameSrv *srv, GameConnection *conn, GmPlayer *player)
@@ -248,7 +250,7 @@ void GameSrv_SendUpdatePvpUnlockedSkills(GameSrv *srv, GameConnection *conn, GmP
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
 
-void GameSrv_SendUpdatePveUnlockedSkills(GameSrv *srv, GameConnection *conn, GmPlayer *player)
+void GameSrv_SendUpdateUnlockedSkills(GameSrv *srv, GameConnection *conn, GmPlayer *player)
 {
     DbCharacter *ch = &player->character;
 
