@@ -258,10 +258,13 @@ int AuthConnection_SendMessage(AuthConnection *conn, AuthSrvMsg *msg, size_t siz
 {
     int err;
 
-    // I'm not sure the assert necessarily makes sense, but we shouldn't write
-    // after a connection got closed. Or should we allow it and check it when
-    // we flush? Unless we always expect a connection to have a valid socket.
-    assert(conn->source.socket != 0);
+    // We may want to send packet in response to packets after we close the socket,
+    // because we keep processing all packets we received. In this case, we just
+    // skip writing any data.
+    if (conn->source.socket == 0) {
+        return ERR_OK;
+    }
+
     assert(msg->header < ARRAY_SIZE(AUTH_SMSG_FORMATS));
     MsgFormat format = AUTH_SMSG_FORMATS[msg->header];
 
