@@ -1721,10 +1721,6 @@ int GameSrv_HandleCharCreationConfirm(GameSrv *srv, uint32_t player_id, GameSrv_
     // @Cleanup: Add the unlocked profession and unlocked map
     character.unlocked_professions = 1 << app.primary_profession;
 
-    // @Cleanup: For testing
-    memset(&character.unlocked_skills, 0xFF, sizeof(character.unlocked_skills));
-    memset(&character.unlocked_maps, 0xFF, sizeof(character.unlocked_maps));
-
     GmBag *bag = &player->bags.equipped_items;
     assert(EquippedItemSlot_Count <= bag->slot_count);
     for (uint8_t idx = EquippedItemSlot_Body; idx <= EquippedItemSlot_Gloves; ++idx) {
