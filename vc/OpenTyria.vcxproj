@@ -331,6 +331,7 @@
     <ClInclude Include="..\code\array.h" />
     <ClInclude Include="..\code\AuthMsg.h" />
     <ClInclude Include="..\code\AuthSrv.h" />
+    <ClInclude Include="..\code\bitmap.h" />
     <ClInclude Include="..\code\CtrlConn.h" />
     <ClInclude Include="..\code\CtrlProto.h" />
     <ClInclude Include="..\code\Db.h" />

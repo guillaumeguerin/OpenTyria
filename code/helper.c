@@ -14,6 +14,11 @@ void memcpy_u32(uint32_t *dst, const uint32_t *src, size_t count)
     memcpy(dst, src, count * sizeof(uint32_t));
 }
 
+void memcpy_ul(unsigned long *dst, const unsigned long *src, size_t count)
+{
+    memcpy(dst, src, count * sizeof(unsigned long));
+}
+
 int memcmp_u16(const uint16_t *left, const uint16_t *right, size_t count)
 {
     return memcmp(left, right, count * sizeof(uint16_t));

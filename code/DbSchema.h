@@ -90,12 +90,12 @@ static const char *DbAccountColsName[] = {
     X(uint8_t, active_weapon_set) \
     X(uint8_t, primary_profession) \
     X(uint8_t, secondary_profession) \
-    X(static_array(uint32_t, 128), unlocked_skills) \
-    X(static_array(uint32_t, 32), unlocked_maps) \
-    X(static_array(uint32_t, 32), completed_missions_nm) \
-    X(static_array(uint32_t, 32), completed_bonuses_nm) \
-    X(static_array(uint32_t, 32), completed_missions_hm) \
-    X(static_array(uint32_t, 32), completed_bonuses_hm) \
+    X(Bitmap1024, unlocked_skills) \
+    X(Bitmap256, unlocked_maps) \
+    X(Bitmap256, completed_missions_nm) \
+    X(Bitmap256, completed_bonuses_nm) \
+    X(Bitmap256, completed_missions_hm) \
+    X(Bitmap256, completed_bonuses_hm) \
     X(uint32_t, unlocked_professions) \
     X(uint32_t, skill1) \
     X(uint32_t, skill2) \

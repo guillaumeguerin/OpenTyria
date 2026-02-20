@@ -210,25 +210,25 @@ void GameSrv_SendUnlockedMaps(GameSrv *srv, GameConnection *conn, GmPlayer *play
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_MAP_UPDATE_UNLOCKED_LIST);
     GameSrv_UnlockedMaps *msg = &buffer->unlocked_maps;
 
-    STATIC_ASSERT(sizeof(msg->completed_missions_nm_buf) <= sizeof(ch->completed_missions_nm.buf));
-    copy_u32_safe_or_abort(msg->completed_missions_nm_buf, sizeof(msg->completed_missions_nm_buf), ch->completed_missions_nm.buf, ch->completed_missions_nm.len);
-    msg->completed_missions_nm_len = (uint32_t) ch->completed_missions_nm.len;
+    STATIC_ASSERT(sizeof(ch->completed_missions_nm.bitmap) <= sizeof(msg->completed_missions_nm_buf));
+    msg->completed_missions_nm_len = (uint32_t) bitmap_length(ch->completed_missions_nm);
+    memcpy_u32(msg->completed_missions_nm_buf, ch->completed_missions_nm.bitmap, msg->completed_missions_nm_len);
 
-    STATIC_ASSERT(sizeof(msg->completed_bonuses_nm_buf) <= sizeof(ch->completed_bonuses_nm.buf));
-    copy_u32_safe_or_abort(msg->completed_bonuses_nm_buf, sizeof(msg->completed_bonuses_nm_buf), ch->completed_bonuses_nm.buf, ch->completed_bonuses_nm.len);
-    msg->completed_bonuses_nm_len = (uint32_t) ch->completed_bonuses_nm.len;
+    STATIC_ASSERT(sizeof(ch->completed_bonuses_nm.bitmap) <= sizeof(msg->completed_bonuses_nm_buf));
+    msg->completed_bonuses_nm_len = (uint32_t) bitmap_length(ch->completed_bonuses_nm);
+    memcpy_u32(msg->completed_bonuses_nm_buf, ch->completed_bonuses_nm.bitmap, sizeof(msg->completed_bonuses_nm_buf));
 
-    STATIC_ASSERT(sizeof(msg->completed_missions_hm_buf) <= sizeof(ch->completed_missions_hm.buf));
-    copy_u32_safe_or_abort(msg->completed_missions_hm_buf, sizeof(msg->completed_missions_hm_buf), ch->completed_missions_hm.buf, ch->completed_missions_hm.len);
-    msg->completed_missions_hm_len = (uint32_t) ch->completed_missions_hm.len;
+    STATIC_ASSERT(sizeof(ch->completed_missions_hm.bitmap) <= sizeof(msg->completed_missions_hm_buf));
+    msg->completed_missions_hm_len = (uint32_t) bitmap_length(ch->completed_missions_hm);
+    memcpy_u32(msg->completed_missions_hm_buf, ch->completed_missions_hm.bitmap, sizeof(msg->completed_missions_hm_buf));
 
-    STATIC_ASSERT(sizeof(msg->completed_bonuses_hm_buf) <= sizeof(ch->completed_bonuses_hm.buf));
-    copy_u32_safe_or_abort(msg->completed_bonuses_hm_buf, sizeof(msg->completed_bonuses_hm_buf), ch->completed_bonuses_hm.buf, ch->completed_bonuses_hm.len);
-    msg->completed_bonuses_hm_len = (uint32_t) ch->completed_bonuses_hm.len;
+    STATIC_ASSERT(sizeof(ch->completed_bonuses_hm.bitmap) <= sizeof(msg->completed_bonuses_hm_buf));
+    msg->completed_bonuses_hm_len = (uint32_t) bitmap_length(ch->completed_bonuses_hm);
+    memcpy_u32(msg->completed_bonuses_hm_buf, ch->completed_bonuses_hm.bitmap, sizeof(msg->completed_bonuses_hm_buf));
 
-    STATIC_ASSERT(sizeof(msg->unlocked_maps_buf) <= sizeof(ch->unlocked_maps.buf));
-    copy_u32_safe_or_abort(msg->unlocked_maps_buf, sizeof(msg->unlocked_maps_buf), ch->unlocked_maps.buf, ch->unlocked_maps.len);
-    msg->unlocked_maps_len = (uint32_t) ch->unlocked_maps.len;
+    STATIC_ASSERT(sizeof(ch->unlocked_maps.bitmap) <= sizeof(msg->unlocked_maps_buf));
+    msg->unlocked_maps_len = (uint32_t) bitmap_length(ch->unlocked_maps);
+    memcpy_u32(msg->unlocked_maps_buf, ch->unlocked_maps.bitmap, sizeof(msg->unlocked_maps_buf));
 
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
@@ -240,13 +240,9 @@ void GameSrv_SendUpdatePvpUnlockedSkills(GameSrv *srv, GameConnection *conn, GmP
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_PVP_UPDATE_UNLOCKED_SKILLS);
     GameSrv_UpdatePvpUnlockedSkills *msg = &buffer->update_pvp_unlocked_skills;
 
-    STATIC_ASSERT(sizeof(msg->unlocked_skills_buf) <= sizeof(ch->unlocked_skills.buf));
-    copy_u32_safe_or_abort(
-        msg->unlocked_skills_buf,
-        sizeof(msg->unlocked_skills_buf),
-        ch->unlocked_skills.buf,
-        ch->unlocked_skills.len);
-    msg->unlocked_skills_len = (uint32_t) ch->unlocked_skills.len;
+    STATIC_ASSERT(sizeof(ch->unlocked_skills.bitmap) <= sizeof(msg->unlocked_skills_buf));
+    msg->unlocked_skills_len = (uint32_t) bitmap_length(ch->unlocked_skills);
+    memcpy_u32(msg->unlocked_skills_buf, ch->unlocked_skills.bitmap, msg->unlocked_skills_len);
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
 
@@ -257,13 +253,9 @@ void GameSrv_SendUpdateUnlockedSkills(GameSrv *srv, GameConnection *conn, GmPlay
     GameSrvMsg *buffer = GameSrv_BuildMsg(srv, GAME_SMSG_UPDATE_UNLOCKED_SKILLS);
     GameSrv_UpdatePveUnlockedSkills *msg = &buffer->update_pve_unlocked_skills;
 
-    STATIC_ASSERT(sizeof(msg->unlocked_skills_buf) <= sizeof(ch->unlocked_skills.buf));
-    copy_u32_safe_or_abort(
-        msg->unlocked_skills_buf,
-        sizeof(msg->unlocked_skills_buf),
-        ch->unlocked_skills.buf,
-        ch->unlocked_skills.len);
-    msg->unlocked_skills_len = (uint32_t) ch->unlocked_skills.len;
+    STATIC_ASSERT(sizeof(ch->unlocked_skills.bitmap) <= sizeof(msg->unlocked_skills_buf));
+    msg->unlocked_skills_len = (uint32_t) bitmap_length(ch->unlocked_skills);
+    memcpy_u32(msg->unlocked_skills_buf, ch->unlocked_skills.bitmap, msg->unlocked_skills_len);
     GameConnection_SendMessage(conn, buffer, sizeof(*msg));
 }
 

@@ -74,6 +74,7 @@
 #include "GmUuid.h"
 #include "array.h"
 #include "slice.h"
+#include "bitmap.h"
 
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"

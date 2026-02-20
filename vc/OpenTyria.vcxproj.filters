@@ -99,6 +99,7 @@
     <ClInclude Include="..\code\CtrlProto.h" />
     <ClInclude Include="..\code\GmAttributes.h" />
     <ClInclude Include="..\code\GmUuid.h" />
+    <ClInclude Include="..\code\bitmap.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\code\msgdefs.info" />
