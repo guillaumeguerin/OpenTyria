@@ -102,15 +102,6 @@ bool s16_to_ascii(char *dst, size_t size, const uint16_t *src, size_t srclen)
     return true;
 }
 
-void copy_u32_safe_or_abort(uint32_t *dst, size_t dstlen, const uint32_t *src, size_t srclen)
-{
-    if (dstlen < srclen) {
-        abort();
-    }
-
-    memcpy_u32(dst, src, srclen);
-}
-
 float lerpf(float p1, float p2, float t)
 {
     return t * p1 + (1 - t) * p2;
@@ -121,9 +112,4 @@ float clampf(float val, float min, float max)
     if (val < min) return min;
     if (val > max) return max;
     return val;
-}
-
-uint32_t u32min(uint32_t a, uint32_t b)
-{
-    return a < b ? a : b;
 }

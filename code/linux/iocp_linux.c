@@ -110,7 +110,7 @@ int iocp_poll(Iocp *iocp, ArrayEvent *events, uint32_t timeout_ms)
     } else if (UINT32_MAX <= INT_MAX) {
         timeout = (int) timeout_ms;
     } else {
-        timeout = (int)u32min(INT_MAX, timeout_ms);
+        timeout = (int)min_u32(INT_MAX, timeout_ms);
     }
 
     int efd = (int) iocp->handle;
